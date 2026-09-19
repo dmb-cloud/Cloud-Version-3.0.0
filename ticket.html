@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>DMS Cloud Registry — ระบบคำขอ (Ticket)</title>
+  <link rel="icon" type="image/x-icon" href="img/ico_logo@2x.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; }
+    :root { --theme-primary: #122e5a; }
+    .bg-theme { background-color: var(--theme-primary) !important; }
+    .text-theme { color: var(--theme-primary) !important; }
+    .tab-btn.active { background: var(--theme-primary); color: #fff; }
+    .type-card.selected { border-color: var(--theme-primary); background: #eff6ff; }
+  </style>
+</head>
+
+<body class="relative min-h-screen pb-10">
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-slate-50/90 z-50 flex flex-col items-center justify-center transition-opacity duration-300">
+    <i class="fa-solid fa-circle-notch fa-spin text-4xl text-[#122e5a] mb-4"></i>
+    <h2 class="text-lg font-bold text-slate-800">กำลังโหลดข้อมูล...</h2>
+  </div>
+
+  <!-- Header / Navbar -->
+  <div class="bg-theme text-white py-4 px-6 shadow-lg flex justify-between items-center sticky top-0 z-40">
+    <div>
+      <h1 class="text-lg md:text-xl font-bold">DMS Cloud Registry — ระบบคำขอ (Ticket)</h1>
+      <a href="index.html" class="text-white/80 text-[11px] font-light hover:text-white hover:underline">
+        <i class="fa-solid fa-arrow-left mr-1"></i> กลับหน้ารายการสินทรัพย์
+      </a>
+    </div>
+    <div class="hidden md:flex items-center gap-4 bg-black/20 rounded-full px-4 py-2">
+      <div class="flex items-center"><i class="fa-solid fa-user text-sm mr-2"></i><span id="profileName" class="text-sm font-medium">ผู้ใช้งาน</span></div>
+      <span class="text-slate-400">|</span>
+      <div class="flex items-center"><i class="fa-solid fa-building text-sm mr-2"></i><span id="displayAgency" class="text-sm font-medium">หน่วยงาน</span></div>
+      <span class="text-slate-400">|</span>
+      <div class="flex items-center text-xs text-white/70"><i class="fa-regular fa-clock mr-1"></i><span id="sessionTimer">--:--</span></div>
+      <span class="text-slate-400">|</span>
+      <button onclick="openLogoutModal()" class="flex items-center text-sm font-medium text-rose-300 hover:text-rose-100 transition">
+        <i class="fa-solid fa-right-from-bracket mr-1"></i> ออกจากระบบ
+      </button>
+    </div>
+  </div>
+
+  <div class="max-w-5xl mx-auto space-y-6 p-4 md:p-8">
+
+    <!-- Tabs -->
+    <div class="flex gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm w-fit">
+      <button id="tabBtnNew" onclick="switchTab('new')" class="tab-btn active px-4 py-2 rounded-lg text-sm font-bold transition">
+        <i class="fa-solid fa-plus mr-1.5"></i> ยื่นคำขอใหม่
+      </button>
+      <button id="tabBtnMine" onclick="switchTab('mine')" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold text-slate-600 transition">
+        <i class="fa-solid fa-list-check mr-1.5"></i> คำขอของฉัน
+      </button>
+      <button id="tabBtnAdmin" onclick="switchTab('admin')" class="hidden tab-btn px-4 py-2 rounded-lg text-sm font-bold text-slate-600 transition">
+        <i class="fa-solid fa-user-shield mr-1.5"></i> จัดการคำขอทั้งหมด
+      </button>
+    </div>
+
+    <!-- ============ TAB: NEW TICKET ============ -->
+    <div id="tabNew" class="space-y-4">
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h2 class="text-lg font-bold text-slate-800 mb-1">เลือกประเภทคำขอ</h2>
+        <p class="text-xs text-slate-500 mb-4">เลือกประเภทที่ต้องการ แล้วกรอกรายละเอียดด้านล่าง</p>
+
+        <div id="typeCardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+          <!-- ใส่ card ด้วย JS -->
+        </div>
+
+        <div id="ticketFormWrap" class="hidden border-t border-slate-100 pt-5">
+          <h3 id="selectedTypeLabel" class="text-base font-bold text-theme mb-4"></h3>
+          <form id="ticketForm" onsubmit="submitTicket(event)">
+            <div id="dynamicFields" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4"></div>
+            <div class="mb-4">
+              <label class="block text-xs font-semibold text-gray-700 mb-1">หมายเหตุเพิ่มเติม (ถ้ามี)</label>
+              <textarea id="ticketNote" maxlength="500" rows="2" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#122e5a] outline-none"></textarea>
+            </div>
+            <div id="ticketFormError" class="hidden mb-4 p-2.5 bg-red-100 text-red-600 text-xs rounded-lg border border-red-300"></div>
+            <div id="ticketFormSuccess" class="hidden mb-4 p-2.5 bg-emerald-100 text-emerald-700 text-xs rounded-lg border border-emerald-300 font-bold"></div>
+            <div class="flex gap-3">
+              <button type="submit" id="btnSubmitTicket" class="px-6 py-2.5 bg-theme text-white text-sm font-bold rounded-lg shadow-md hover:opacity-90 transition">
+                <i class="fa-solid fa-paper-plane mr-1.5"></i> ส่งคำขอ
+              </button>
+              <button type="button" onclick="resetTicketForm()" class="px-5 py-2.5 bg-slate-200 text-slate-700 text-sm font-bold rounded-lg hover:bg-slate-300 transition">ยกเลิก</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TAB: MY TICKETS ============ -->
+    <div id="tabMine" class="hidden space-y-4">
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h2 class="text-lg font-bold text-slate-800 mb-4"><i class="fa-solid fa-list-check text-blue-600 mr-2"></i> คำขอของฉัน</h2>
+        <div class="overflow-x-auto rounded-lg border border-slate-200">
+          <table class="w-full text-xs text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-800 text-white uppercase tracking-wider">
+                <th class="py-3 px-3">เลขที่คำขอ</th>
+                <th class="py-3 px-3">ประเภท</th>
+                <th class="py-3 px-3">สถานะ</th>
+                <th class="py-3 px-3">วันที่ยื่น</th>
+                <th class="py-3 px-3 text-center">รายละเอียด</th>
+              </tr>
+            </thead>
+            <tbody id="myTicketsBody" class="divide-y divide-slate-100 bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TAB: ADMIN ============ -->
+    <div id="tabAdmin" class="hidden space-y-4">
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+          <h2 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-user-shield text-rose-600 mr-2"></i> จัดการคำขอทั้งหมด</h2>
+          <div class="flex gap-2">
+            <select id="filterStatus" onchange="renderAdminTable()" class="px-3 py-2 text-xs font-semibold bg-white border border-slate-300 rounded-lg">
+              <option value="">ทุกสถานะ</option>
+            </select>
+            <select id="filterType" onchange="renderAdminTable()" class="px-3 py-2 text-xs font-semibold bg-white border border-slate-300 rounded-lg">
+              <option value="">ทุกประเภท</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-x-auto rounded-lg border border-slate-200">
+          <table class="w-full text-xs text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-800 text-white uppercase tracking-wider">
+                <th class="py-3 px-3">เลขที่คำขอ</th>
+                <th class="py-3 px-3">หน่วยงาน</th>
+                <th class="py-3 px-3">ผู้ยื่น</th>
+                <th class="py-3 px-3">ประเภท</th>
+                <th class="py-3 px-3">สถานะ</th>
+                <th class="py-3 px-3">วันที่ยื่น</th>
+                <th class="py-3 px-3 text-center">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="adminTicketsBody" class="divide-y divide-slate-100 bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Ticket Detail Modal -->
+  <div id="ticketModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 max-h-[90vh] flex flex-col">
+      <div class="bg-slate-800 px-6 py-4 flex items-center justify-between shrink-0">
+        <h3 id="modalTicketTitle" class="text-base font-bold text-white"></h3>
+        <button onclick="closeTicketModal()" class="text-slate-400 hover:text-white text-xl leading-none font-bold">&times;</button>
+      </div>
+      <div id="modalTicketBody" class="p-6 text-sm text-slate-700 space-y-3 overflow-y-auto"></div>
+      <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-end shrink-0">
+        <button onclick="closeTicketModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition">ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logout Modal -->
+  <div id="logoutModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200">
+      <div class="bg-rose-600 px-6 py-4 flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2"><i class="fa-solid fa-right-from-bracket"></i> ยืนยันการออกจากระบบ</h3>
+        <button onclick="closeLogoutModal()" class="text-rose-200 hover:text-white text-xl leading-none font-bold">&times;</button>
+      </div>
+      <div class="p-6 text-sm text-slate-600 text-center">คุณต้องการออกจากระบบใช่หรือไม่?</div>
+      <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-end gap-2">
+        <button onclick="closeLogoutModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition">ยกเลิก</button>
+        <button onclick="logout()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition">
+          <i class="fa-solid fa-right-from-bracket mr-1"></i> ออกจากระบบ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwxRHjkBBTSTeAlbE14eDzPpdBBT2OnJCJW0YgcHLGXeqkxoNtRLosafoDygxi5tOQU/exec";
+
+    let userAgency = "", userEmail = "", userName = "", isAdmin = false;
+    let sessionTimerId = null;
+    let ticketTypes = [];       // จาก getTicketTypes()
+    let selectedType = null;    // key ของประเภทที่เลือกอยู่
+    let myTickets = [];
+    let allTickets = [];        // สำหรับแอดมิน
+
+    const STATUS_COLOR = {
+      "รอดำเนินการ":   "bg-amber-100 text-amber-800 border-amber-200",
+      "กำลังดำเนินการ": "bg-sky-100 text-sky-800 border-sky-200",
+      "อนุมัติ":        "bg-emerald-100 text-emerald-800 border-emerald-200",
+      "ปฏิเสธ":         "bg-rose-100 text-rose-800 border-rose-200",
+      "เสร็จสิ้น":       "bg-slate-200 text-slate-700 border-slate-300"
+    };
+    const TYPE_ICON = {
+      NEW_SERVER: "fa-server", CHANGE_SERVER: "fa-arrows-rotate",
+      FIREWALL: "fa-shield-halved", DOMAIN: "fa-globe", VPN: "fa-network-wired"
+    };
+
+    // ---------- helpers ----------
+    function getToken() { return sessionStorage.getItem('access_token') || ""; }
+    function escapeHtml(v) {
+      return String(v === null || v === undefined ? '' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function forceLogin(msg) {
+      sessionStorage.clear();
+      if (msg) alert(msg);
+      window.location.href = "auth.html";
+    }
+    function fmtDate(iso) {
+      if (!iso) return '-';
+      const d = new Date(iso);
+      return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) +
+        ' ' + d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    }
+    function statusBadge(status) {
+      const cls = STATUS_COLOR[status] || "bg-slate-100 text-slate-700 border-slate-200";
+      return `<span class="px-2 py-0.5 rounded text-[10px] font-bold border ${cls}">${escapeHtml(status)}</span>`;
+    }
+
+    async function callBackend(action, payload = {}) {
+      try {
+        payload.token = getToken();
+        const response = await fetch(BACKEND_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action, payload })
+        });
+        const res = await response.json();
+        if (!res.success) {
+          if (res.code === 'UNAUTHENTICATED') { forceLogin("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่"); return { success: false, message: res.message }; }
+          return { success: false, message: res.message || "เกิดข้อผิดพลาด" };
+        }
+        return res.data || { success: false, message: "เกิดข้อผิดพลาด" };
+      } catch (err) {
+        return { success: false, networkError: true, message: "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้" };
+      }
+    }
+
+    async function callWithRetry(action, payload = {}, retries = 2, delayMs = 700) {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        const res = await callBackend(action, payload);
+        if (res.success || !res.networkError) return res;
+        if (attempt < retries) await new Promise(r => setTimeout(r, delayMs));
+      }
+      return { success: false, networkError: true, message: "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้" };
+    }
+
+    // ---------- bootstrap ----------
+    document.addEventListener("DOMContentLoaded", async function () {
+      const exp = parseInt(sessionStorage.getItem('token_exp') || "0", 10);
+      if (!getToken() || exp <= Date.now()) { forceLogin(); return; }
+
+      const me = await callWithRetry("whoAmI");
+      if (!me.success) {
+        if (me.networkError) {
+          document.getElementById('loadingOverlay').innerHTML =
+            '<i class="fa-solid fa-triangle-exclamation text-4xl text-amber-500 mb-4"></i>' +
+            '<h2 class="text-lg font-bold text-slate-800 mb-2">เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ</h2>' +
+            '<button onclick="location.reload()" class="px-5 py-2 bg-theme text-white text-sm font-bold rounded-lg mt-2">โหลดหน้านี้ใหม่</button>';
+          return;
+        }
+        forceLogin(me.message || "เซสชันไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่");
+        return;
+      }
+
+      userAgency = me.user.agency || ""; userEmail = me.user.email || ""; userName = me.user.fullname || "";
+      isAdmin = !!me.user.isAdmin;
+
+      document.getElementById('profileName').textContent = userName;
+      document.getElementById('displayAgency').textContent = userAgency + (isAdmin ? " (ผู้ดูแล)" : "");
+      if (isAdmin) document.getElementById('tabBtnAdmin').classList.remove('hidden');
+
+      startSessionWatch(exp);
+
+      const typesRes = await callWithRetry("getTicketTypes");
+      if (typesRes.success) { ticketTypes = typesRes.types || []; renderTypeCards(); }
+
+      await loadMyTickets();
+
+      document.getElementById('loadingOverlay').classList.add('hidden');
+    });
+
+    function startSessionWatch(exp) {
+      clearInterval(sessionTimerId);
+      sessionTimerId = setInterval(() => {
+        const left = exp - Date.now();
+        if (left <= 0) { clearInterval(sessionTimerId); forceLogin("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่"); return; }
+        const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
+        document.getElementById('sessionTimer').textContent = String(m).padStart(2, '0') + ":" + String(s).padStart(2, '0');
+      }, 1000);
+    }
+
+    async function logout() {
+      try { await callBackend("logout"); } catch (e) {}
+      sessionStorage.clear();
+      window.location.href = "auth.html";
+    }
+    function openLogoutModal() { document.getElementById('logoutModal').classList.remove('hidden'); }
+    function closeLogoutModal() { document.getElementById('logoutModal').classList.add('hidden'); }
+
+    // ---------- tabs ----------
+    function switchTab(name) {
+      ['New', 'Mine', 'Admin'].forEach(t => document.getElementById('tab' + t).classList.add('hidden'));
+      ['tabBtnNew', 'tabBtnMine', 'tabBtnAdmin'].forEach(id => {
+        document.getElementById(id).classList.remove('active');
+        document.getElementById(id).classList.add('text-slate-600');
+      });
+      document.getElementById('tab' + name.charAt(0).toUpperCase() + name.slice(1)).classList.remove('hidden');
+      const btn = document.getElementById('tabBtn' + name.charAt(0).toUpperCase() + name.slice(1));
+      btn.classList.add('active'); btn.classList.remove('text-slate-600');
+
+      if (name === 'mine') renderMyTicketsTable();
+      if (name === 'admin' && isAdmin) loadAllTicketsForAdmin();
+    }
+
+    // ---------- new ticket form ----------
+    function renderTypeCards() {
+      const grid = document.getElementById('typeCardGrid');
+      grid.innerHTML = '';
+      ticketTypes.forEach(t => {
+        const icon = TYPE_ICON[t.key] || 'fa-file-lines';
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'type-card text-left p-4 rounded-xl border-2 border-slate-200 hover:border-blue-300 transition bg-white';
+        card.dataset.key = t.key;
+        card.innerHTML = `<i class="fa-solid ${icon} text-2xl text-theme mb-2"></i><p class="text-sm font-bold text-slate-800">${escapeHtml(t.label)}</p>`;
+        card.onclick = () => selectTicketType(t.key);
+        grid.appendChild(card);
+      });
+    }
+
+    function selectTicketType(key) {
+      selectedType = key;
+      document.querySelectorAll('.type-card').forEach(c => c.classList.toggle('selected', c.dataset.key === key));
+      const typeConfig = ticketTypes.find(t => t.key === key);
+      if (!typeConfig) return;
+
+      document.getElementById('selectedTypeLabel').textContent = typeConfig.label;
+      document.getElementById('ticketFormWrap').classList.remove('hidden');
+      document.getElementById('ticketFormError').classList.add('hidden');
+      document.getElementById('ticketFormSuccess').classList.add('hidden');
+
+      const fieldsWrap = document.getElementById('dynamicFields');
+      fieldsWrap.innerHTML = '';
+      typeConfig.fields.forEach(f => {
+        const wrap = document.createElement('div');
+        if (f.type === 'textarea') wrap.className = 'sm:col-span-2';
+
+        const label = document.createElement('label');
+        label.className = 'block text-xs font-semibold text-gray-700 mb-1';
+        label.innerHTML = escapeHtml(f.label) + (f.required ? ' <span class="text-red-500">*</span>' : '');
+        wrap.appendChild(label);
+
+        let input;
+        if (f.type === 'select') {
+          input = document.createElement('select');
+          input.className = 'w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#122e5a] outline-none';
+          const blank = document.createElement('option');
+          blank.value = ''; blank.textContent = '-- เลือก --'; blank.disabled = true; blank.selected = true;
+          input.appendChild(blank);
+          (f.options || []).forEach(opt => {
+            const o = document.createElement('option'); o.value = opt; o.textContent = opt;
+            input.appendChild(o);
+          });
+        } else if (f.type === 'textarea') {
+          input = document.createElement('textarea');
+          input.rows = 2;
+          input.className = 'w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#122e5a] outline-none';
+        } else {
+          input = document.createElement('input');
+          input.type = (f.type === 'number') ? 'number' : 'text';
+          input.className = 'w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#122e5a] outline-none';
+        }
+        input.dataset.fieldKey = f.key;
+        input.maxLength = 300;
+        if (f.required) input.required = true;
+        wrap.appendChild(input);
+        fieldsWrap.appendChild(wrap);
+      });
+    }
+
+    function resetTicketForm() {
+      selectedType = null;
+      document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
+      document.getElementById('ticketFormWrap').classList.add('hidden');
+      document.getElementById('ticketForm').reset();
+    }
+
+    async function submitTicket(e) {
+      e.preventDefault();
+      if (!selectedType) return;
+
+      const err = document.getElementById('ticketFormError');
+      const succ = document.getElementById('ticketFormSuccess');
+      err.classList.add('hidden'); succ.classList.add('hidden');
+
+      const details = {};
+      document.querySelectorAll('#dynamicFields [data-field-key]').forEach(el => {
+        details[el.dataset.fieldKey] = el.value.trim();
+      });
+      const note = document.getElementById('ticketNote').value.trim();
+
+      const btn = document.getElementById('btnSubmitTicket');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> กำลังส่ง...';
+
+      const res = await callBackend("createTicket", { type: selectedType, details, note });
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-1.5"></i> ส่งคำขอ';
+
+      if (res.success) {
+        succ.textContent = res.message; succ.classList.remove('hidden');
+        document.getElementById('ticketForm').reset();
+        await loadMyTickets();
+        setTimeout(() => { resetTicketForm(); switchTab('mine'); }, 1200);
+      } else {
+        err.textContent = res.message || "เกิดข้อผิดพลาด"; err.classList.remove('hidden');
+      }
+    }
+
+    // ---------- my tickets ----------
+    async function loadMyTickets() {
+      const res = await callWithRetry("listTickets");
+      if (res.success) myTickets = res.tickets || [];
+      renderMyTicketsTable();
+    }
+
+    function renderMyTicketsTable() {
+      const tbody = document.getElementById('myTicketsBody');
+      tbody.innerHTML = '';
+      if (myTickets.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400">ยังไม่มีคำขอ</td></tr>';
+        return;
+      }
+      myTickets.forEach(t => {
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-3 font-mono font-semibold text-slate-800">${escapeHtml(t.id)}</td>
+            <td class="py-2.5 px-3">${escapeHtml(t.typeLabel)}</td>
+            <td class="py-2.5 px-3">${statusBadge(t.status)}</td>
+            <td class="py-2.5 px-3 text-slate-500">${fmtDate(t.createdAt)}</td>
+            <td class="py-2.5 px-3 text-center">
+              <button onclick="openTicketDetail('${escapeHtml(t.id)}', false)" class="text-theme hover:underline text-xs font-bold">ดูรายละเอียด</button>
+            </td>
+          </tr>`);
+      });
+    }
+
+    // ---------- admin ----------
+    async function loadAllTicketsForAdmin() {
+      const res = await callWithRetry("listTickets");
+      if (res.success) {
+        allTickets = res.tickets || [];
+        const statuses = [...new Set(allTickets.map(t => t.status))];
+        const types = [...new Map(allTickets.map(t => [t.type, t.typeLabel])).entries()];
+        const fs = document.getElementById('filterStatus');
+        const ft = document.getElementById('filterType');
+        fs.innerHTML = '<option value="">ทุกสถานะ</option>' + statuses.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+        ft.innerHTML = '<option value="">ทุกประเภท</option>' + types.map(([k, l]) => `<option value="${escapeHtml(k)}">${escapeHtml(l)}</option>`).join('');
+      }
+      renderAdminTable();
+    }
+
+    function renderAdminTable() {
+      const statusF = document.getElementById('filterStatus').value;
+      const typeF = document.getElementById('filterType').value;
+      const filtered = allTickets.filter(t => (!statusF || t.status === statusF) && (!typeF || t.type === typeF));
+
+      const tbody = document.getElementById('adminTicketsBody');
+      tbody.innerHTML = '';
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400">ไม่พบคำขอ</td></tr>';
+        return;
+      }
+      filtered.forEach(t => {
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-3 font-mono font-semibold text-slate-800">${escapeHtml(t.id)}</td>
+            <td class="py-2.5 px-3">${escapeHtml(t.agency)}</td>
+            <td class="py-2.5 px-3">${escapeHtml(t.requesterName)}<br><span class="text-slate-400 text-[10px]">${escapeHtml(t.requesterEmail)}</span></td>
+            <td class="py-2.5 px-3">${escapeHtml(t.typeLabel)}</td>
+            <td class="py-2.5 px-3">${statusBadge(t.status)}</td>
+            <td class="py-2.5 px-3 text-slate-500">${fmtDate(t.createdAt)}</td>
+            <td class="py-2.5 px-3 text-center">
+              <button onclick="openTicketDetail('${escapeHtml(t.id)}', true)" class="text-theme hover:underline text-xs font-bold">จัดการ</button>
+            </td>
+          </tr>`);
+      });
+    }
+
+    // ---------- ticket detail modal ----------
+    function findTicket(id) {
+      return allTickets.find(t => t.id === id) || myTickets.find(t => t.id === id);
+    }
+
+    function openTicketDetail(id, adminMode) {
+      const t = findTicket(id);
+      if (!t) return;
+
+      document.getElementById('modalTicketTitle').textContent = t.id + ' — ' + t.typeLabel;
+
+      let detailRows = Object.keys(t.details || {}).map(k =>
+        `<div class="flex justify-between border-b border-slate-100 py-1.5"><span class="text-slate-500">${escapeHtml(k)}</span><span class="font-semibold text-slate-800">${escapeHtml(t.details[k]) || '-'}</span></div>`
+      ).join('');
+
+      let html = `
+        <div class="flex justify-between items-center mb-2">
+          <span class="text-xs text-slate-500">สถานะปัจจุบัน</span>${statusBadge(t.status)}
+        </div>
+        <div class="text-xs text-slate-500 mb-3">
+          ผู้ยื่น: <strong class="text-slate-700">${escapeHtml(t.requesterName)}</strong> (${escapeHtml(t.requesterEmail)})<br>
+          หน่วยงาน: ${escapeHtml(t.agency)} • ยื่นเมื่อ ${fmtDate(t.createdAt)}
+        </div>
+        <div class="bg-slate-50 rounded-lg p-3 border border-slate-100 mb-3">${detailRows || '-'}</div>
+        ${t.note ? `<div class="mb-3"><p class="text-xs font-semibold text-slate-500 mb-1">หมายเหตุจากผู้ยื่น</p><p class="text-sm bg-slate-50 rounded-lg p-2 border border-slate-100">${escapeHtml(t.note)}</p></div>` : ''}
+        ${t.adminComment ? `<div class="mb-3"><p class="text-xs font-semibold text-slate-500 mb-1">ความเห็นจากผู้ดูแล</p><p class="text-sm bg-sky-50 rounded-lg p-2 border border-sky-100">${escapeHtml(t.adminComment)}</p></div>` : ''}
+      `;
+
+      if (adminMode && isAdmin) {
+        html += `
+          <div class="border-t border-slate-100 pt-4 mt-2">
+            <label class="block text-xs font-semibold text-gray-700 mb-1">เปลี่ยนสถานะ</label>
+            <select id="modalStatusSelect" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm mb-3">
+              ${Object.keys(STATUS_COLOR).map(s => `<option value="${escapeHtml(s)}" ${s === t.status ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}
+            </select>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">ความเห็น/เหตุผล</label>
+            <textarea id="modalCommentInput" rows="2" maxlength="500" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm mb-3">${escapeHtml(t.adminComment)}</textarea>
+            <div id="modalAdminError" class="hidden mb-3 p-2 bg-red-100 text-red-600 text-xs rounded-lg border border-red-300"></div>
+            <button onclick="saveTicketStatus('${escapeHtml(t.id)}')" class="w-full px-4 py-2.5 bg-theme text-white text-sm font-bold rounded-lg hover:opacity-90 transition">
+              <i class="fa-solid fa-check mr-1.5"></i> บันทึกการเปลี่ยนแปลง
+            </button>
+          </div>`;
+      }
+
+      document.getElementById('modalTicketBody').innerHTML = html;
+      document.getElementById('ticketModal').classList.remove('hidden');
+    }
+
+    function closeTicketModal() { document.getElementById('ticketModal').classList.add('hidden'); }
+
+    async function saveTicketStatus(ticketId) {
+      const status = document.getElementById('modalStatusSelect').value;
+      const adminComment = document.getElementById('modalCommentInput').value.trim();
+      const err = document.getElementById('modalAdminError');
+      err.classList.add('hidden');
+
+      const res = await callBackend("updateTicketStatus", { ticketId, status, adminComment });
+      if (res.success) {
+        closeTicketModal();
+        await loadAllTicketsForAdmin();
+      } else {
+        err.textContent = res.message || "เกิดข้อผิดพลาด";
+        err.classList.remove('hidden');
+      }
+    }
+  </script>
+</body>
+</html>
