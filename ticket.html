@@ -70,15 +70,75 @@
         <h2 class="text-lg font-bold text-slate-800 mb-1">เลือกประเภทคำขอ</h2>
         <p class="text-xs text-slate-500 mb-4">เลือกประเภทที่ต้องการ แล้วกรอกรายละเอียดด้านล่าง</p>
 
-        <div id="typeCardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-          <!-- ใส่ card ด้วย JS -->
-        </div>
+        <div id="typeCardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6"></div>
 
         <div id="ticketFormWrap" class="hidden border-t border-slate-100 pt-5">
           <h3 id="selectedTypeLabel" class="text-base font-bold text-theme mb-4"></h3>
           <form id="ticketForm" onsubmit="submitTicket(event)">
-            <div id="dynamicFields" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4"></div>
-            <div class="mb-4">
+
+            <!-- ฟอร์มพิเศษ: NEW_SERVER -->
+            <div id="newServerForm" class="hidden space-y-5 mb-5">
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">วันที่ประสงค์ใช้งาน <span class="text-red-500">*</span></label>
+                <select id="nsUrgency" class="w-full sm:w-80 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#122e5a] outline-none">
+                  <option value="" disabled selected>-- เลือก --</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">ชื่อโครงการ หรือระบบงาน <span class="text-red-500">*</span></label>
+                <input type="text" id="nsProjectName" maxlength="200" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#122e5a] outline-none">
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                  <label class="block text-xs font-semibold text-gray-700">ตารางสเปก VM (สูงสุด 5 รายการ) <span class="text-red-500">*</span></label>
+                  <button type="button" id="btnAddVmRow" onclick="addVmRow()" class="text-xs font-bold text-theme hover:underline">
+                    <i class="fa-solid fa-plus mr-1"></i> เพิ่มแถว
+                  </button>
+                </div>
+                <div class="overflow-x-auto rounded-lg border border-slate-200">
+                  <table class="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr class="bg-slate-800 text-white uppercase tracking-wider">
+                        <th class="py-2 px-2 w-8">#</th>
+                        <th class="py-2 px-2 min-w-[160px]">ชื่อ VM / Resource Name</th>
+                        <th class="py-2 px-2 min-w-[120px]">OS</th>
+                        <th class="py-2 px-2 w-24">vCPU</th>
+                        <th class="py-2 px-2 w-24">RAM (GB)</th>
+                        <th class="py-2 px-2 w-28">Storage (GB)</th>
+                        <th class="py-2 px-2 w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="vmTableBody" class="divide-y divide-slate-100 bg-white"></tbody>
+                    <tfoot>
+                      <tr class="bg-slate-50 font-bold text-slate-700">
+                        <td colspan="3" class="py-2 px-2 text-right">รวม (Total)</td>
+                        <td class="py-2 px-2" id="vmTotalVcpu">0</td>
+                        <td class="py-2 px-2" id="vmTotalRam">0</td>
+                        <td class="py-2 px-2" id="vmTotalStorage">0</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">แบบประเมินผลกระทบ (C-I-A) & PDPA <span class="text-red-500">*</span></label>
+                <div class="flex items-center gap-3">
+                  <button type="button" onclick="openCiaModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition">
+                    <i class="fa-solid fa-clipboard-check mr-1.5"></i> เปิดแบบประเมิน
+                  </button>
+                  <span id="ciaSummary" class="text-xs text-slate-500">ยังไม่ได้ประเมิน</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ฟอร์มทั่วไป: CHANGE_SERVER / FIREWALL / DOMAIN / VPN -->
+            <div id="dynamicFields" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-2"></div>
+            <div id="specCard" class="hidden sm:col-span-2 bg-sky-50 border border-sky-200 rounded-lg p-3 mb-4 text-xs text-slate-700"></div>
+
+            <div class="mb-4 mt-2">
               <label class="block text-xs font-semibold text-gray-700 mb-1">หมายเหตุเพิ่มเติม (ถ้ามี)</label>
               <textarea id="ticketNote" maxlength="500" rows="2" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#122e5a] outline-none"></textarea>
             </div>
@@ -139,6 +199,7 @@
                 <th class="py-3 px-3">ผู้ยื่น</th>
                 <th class="py-3 px-3">ประเภท</th>
                 <th class="py-3 px-3">สถานะ</th>
+                <th class="py-3 px-3">Sync</th>
                 <th class="py-3 px-3">วันที่ยื่น</th>
                 <th class="py-3 px-3 text-center">จัดการ</th>
               </tr>
@@ -149,6 +210,56 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- CIA / PDPA Modal (สำหรับ NEW_SERVER) -->
+  <div id="ciaModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[60] p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 max-h-[90vh] flex flex-col">
+      <div class="bg-slate-800 px-6 py-4 flex items-center justify-between shrink-0">
+        <h3 class="text-base font-bold text-white"><i class="fa-solid fa-clipboard-check mr-2"></i> ประเมินผลกระทบ (C-I-A) & PDPA</h3>
+        <button onclick="closeCiaModal()" class="text-slate-400 hover:text-white text-xl leading-none font-bold">&times;</button>
+      </div>
+      <div class="p-6 text-sm text-slate-700 space-y-4 overflow-y-auto">
+        <label class="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 cursor-pointer">
+          <input type="checkbox" id="ciaPdpa" onchange="updateCiaPreview()" class="w-4 h-4 text-sky-600 rounded">
+          <span class="text-xs font-semibold text-amber-800">ระบบนี้มีการจัดเก็บ/ประมวลผลข้อมูลส่วนบุคคล (PDPA)</span>
+        </label>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Confidentiality (C) — การรั่วไหลของข้อมูล</label>
+          <select id="ciaC" onchange="updateCiaPreview()" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm">
+            <option value="1">LOW: ข้อมูลสาธารณะ</option>
+            <option value="2">MEDIUM: ข้อมูลใช้งานภายใน</option>
+            <option value="3">HIGH: ข้อมูลส่วนบุคคล</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Integrity (I) — การถูกแก้ไข/ปลอมแปลง</label>
+          <select id="ciaI" onchange="updateCiaPreview()" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm">
+            <option value="1">LOW: ข้อมูลคลาดเคลื่อนเล็กน้อย</option>
+            <option value="2">MEDIUM: ข้อมูลสำคัญถูกดัดแปลง</option>
+            <option value="3">HIGH: ข้อมูลหลักถูกลบหรือแก้ไข</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Availability (A) — ความพร้อมใช้งาน</label>
+          <select id="ciaA" onchange="updateCiaPreview()" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm">
+            <option value="1">LOW: ระบบหยุดชะงักชั่วคราว</option>
+            <option value="2">MEDIUM: ระบบล่มหลายชั่วโมง</option>
+            <option value="3">HIGH: ระบบล่มถาวร</option>
+          </select>
+        </div>
+
+        <div class="bg-slate-50 rounded-lg p-3 border border-slate-100 flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-600">ระดับผลกระทบรวม</span>
+          <span id="ciaImpactBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">ระดับ 1</span>
+        </div>
+      </div>
+      <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-end gap-2 shrink-0">
+        <button onclick="closeCiaModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition">ยกเลิก</button>
+        <button onclick="saveCiaModal()" class="px-4 py-2 bg-theme text-white text-xs font-semibold rounded-lg transition">บันทึกผลประเมิน</button>
+      </div>
+    </div>
   </div>
 
   <!-- Ticket Detail Modal -->
@@ -187,10 +298,17 @@
 
     let userAgency = "", userEmail = "", userName = "", isAdmin = false;
     let sessionTimerId = null;
-    let ticketTypes = [];       // จาก getTicketTypes()
-    let selectedType = null;    // key ของประเภทที่เลือกอยู่
+    let ticketTypes = [];        // จาก getTicketTypes()
+    let serverOptions = [];      // จาก getServerOptions()
+    let selectedType = null;     // key ของประเภทที่เลือกอยู่
+    let selectedTypeConfig = null;
     let myTickets = [];
-    let allTickets = [];        // สำหรับแอดมิน
+    let allTickets = [];         // สำหรับแอดมิน
+
+    // สถานะฟอร์ม NEW_SERVER
+    let vmRows = [];             // [{name,os,vcpu,ram,storage}]
+    const MAX_VM_ROWS = 5;
+    let ciaValue = null;         // {c,i,a,pdpa} หลังกด "บันทึกผลประเมิน"
 
     const STATUS_COLOR = {
       "รอดำเนินการ":   "bg-amber-100 text-amber-800 border-amber-200",
@@ -224,16 +342,20 @@
     }
     function statusBadge(status) {
       const cls = STATUS_COLOR[status] || "bg-slate-100 text-slate-700 border-slate-200";
-      return `<span class="px-2 py-0.5 rounded text-[10px] font-bold border ${cls}">${escapeHtml(status)}</span>`;
+      return '<span class="px-2 py-0.5 rounded text-[10px] font-bold border ' + cls + '">' + escapeHtml(status) + '</span>';
+    }
+    function impactBadgeClass(impact) {
+      return impact == 1 ? 'bg-emerald-100 text-emerald-800' : impact == 2 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800';
     }
 
-    async function callBackend(action, payload = {}) {
+    async function callBackend(action, payload) {
+      payload = payload || {};
       try {
         payload.token = getToken();
         const response = await fetch(BACKEND_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action, payload })
+          body: JSON.stringify({ action: action, payload: payload })
         });
         const res = await response.json();
         if (!res.success) {
@@ -246,11 +368,13 @@
       }
     }
 
-    async function callWithRetry(action, payload = {}, retries = 2, delayMs = 700) {
+    async function callWithRetry(action, payload, retries, delayMs) {
+      retries = retries === undefined ? 2 : retries;
+      delayMs = delayMs === undefined ? 700 : delayMs;
       for (let attempt = 0; attempt <= retries; attempt++) {
         const res = await callBackend(action, payload);
         if (res.success || !res.networkError) return res;
-        if (attempt < retries) await new Promise(r => setTimeout(r, delayMs));
+        if (attempt < retries) await new Promise(function (r) { setTimeout(r, delayMs); });
       }
       return { success: false, networkError: true, message: "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้" };
     }
@@ -283,16 +407,17 @@
       startSessionWatch(exp);
 
       const typesRes = await callWithRetry("getTicketTypes");
+      const optsRes = await callWithRetry("getServerOptions");
       if (typesRes.success) { ticketTypes = typesRes.types || []; renderTypeCards(); }
+      if (optsRes.success) { serverOptions = optsRes.options || []; }
 
       await loadMyTickets();
-
       document.getElementById('loadingOverlay').classList.add('hidden');
     });
 
     function startSessionWatch(exp) {
       clearInterval(sessionTimerId);
-      sessionTimerId = setInterval(() => {
+      sessionTimerId = setInterval(function () {
         const left = exp - Date.now();
         if (left <= 0) { clearInterval(sessionTimerId); forceLogin("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่"); return; }
         const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
@@ -310,68 +435,181 @@
 
     // ---------- tabs ----------
     function switchTab(name) {
-      ['New', 'Mine', 'Admin'].forEach(t => document.getElementById('tab' + t).classList.add('hidden'));
-      ['tabBtnNew', 'tabBtnMine', 'tabBtnAdmin'].forEach(id => {
+      ['New', 'Mine', 'Admin'].forEach(function (t) { document.getElementById('tab' + t).classList.add('hidden'); });
+      ['tabBtnNew', 'tabBtnMine', 'tabBtnAdmin'].forEach(function (id) {
         document.getElementById(id).classList.remove('active');
         document.getElementById(id).classList.add('text-slate-600');
       });
-      document.getElementById('tab' + name.charAt(0).toUpperCase() + name.slice(1)).classList.remove('hidden');
-      const btn = document.getElementById('tabBtn' + name.charAt(0).toUpperCase() + name.slice(1));
+      const cap = name.charAt(0).toUpperCase() + name.slice(1);
+      document.getElementById('tab' + cap).classList.remove('hidden');
+      const btn = document.getElementById('tabBtn' + cap);
       btn.classList.add('active'); btn.classList.remove('text-slate-600');
 
       if (name === 'mine') renderMyTicketsTable();
       if (name === 'admin' && isAdmin) loadAllTicketsForAdmin();
     }
 
-    // ---------- new ticket form ----------
+    // ==========================================================
+    // NEW TICKET FORM
+    // ==========================================================
     function renderTypeCards() {
       const grid = document.getElementById('typeCardGrid');
       grid.innerHTML = '';
-      ticketTypes.forEach(t => {
+      ticketTypes.forEach(function (t) {
         const icon = TYPE_ICON[t.key] || 'fa-file-lines';
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'type-card text-left p-4 rounded-xl border-2 border-slate-200 hover:border-blue-300 transition bg-white';
         card.dataset.key = t.key;
-        card.innerHTML = `<i class="fa-solid ${icon} text-2xl text-theme mb-2"></i><p class="text-sm font-bold text-slate-800">${escapeHtml(t.label)}</p>`;
-        card.onclick = () => selectTicketType(t.key);
+        card.innerHTML = '<i class="fa-solid ' + icon + ' text-2xl text-theme mb-2"></i><p class="text-sm font-bold text-slate-800">' + escapeHtml(t.label) + '</p>';
+        card.onclick = function () { selectTicketType(t.key); };
         grid.appendChild(card);
       });
     }
 
     function selectTicketType(key) {
       selectedType = key;
-      document.querySelectorAll('.type-card').forEach(c => c.classList.toggle('selected', c.dataset.key === key));
-      const typeConfig = ticketTypes.find(t => t.key === key);
-      if (!typeConfig) return;
+      selectedTypeConfig = ticketTypes.find(function (t) { return t.key === key; });
+      if (!selectedTypeConfig) return;
 
-      document.getElementById('selectedTypeLabel').textContent = typeConfig.label;
+      document.querySelectorAll('.type-card').forEach(function (c) { c.classList.toggle('selected', c.dataset.key === key); });
+      document.getElementById('selectedTypeLabel').textContent = selectedTypeConfig.label;
       document.getElementById('ticketFormWrap').classList.remove('hidden');
       document.getElementById('ticketFormError').classList.add('hidden');
       document.getElementById('ticketFormSuccess').classList.add('hidden');
+      document.getElementById('specCard').classList.add('hidden');
 
-      const fieldsWrap = document.getElementById('dynamicFields');
-      fieldsWrap.innerHTML = '';
-      typeConfig.fields.forEach(f => {
-        const wrap = document.createElement('div');
-        if (f.type === 'textarea') wrap.className = 'sm:col-span-2';
+      const isNewServer = selectedTypeConfig.kind === 'new_server';
+      document.getElementById('newServerForm').classList.toggle('hidden', !isNewServer);
+      document.getElementById('dynamicFields').classList.toggle('hidden', isNewServer);
+
+      if (isNewServer) {
+        const sel = document.getElementById('nsUrgency');
+        sel.innerHTML = '<option value="" disabled selected>-- เลือก --</option>' +
+          (selectedTypeConfig.urgencyOptions || []).map(function (u) { return '<option value="' + escapeHtml(u) + '">' + escapeHtml(u) + '</option>'; }).join('');
+        document.getElementById('nsProjectName').value = '';
+        vmRows = []; addVmRow();
+        ciaValue = null;
+        document.getElementById('ciaSummary').textContent = 'ยังไม่ได้ประเมิน';
+        document.getElementById('ciaSummary').className = 'text-xs text-slate-500';
+      } else {
+        renderDynamicFields(selectedTypeConfig);
+      }
+    }
+
+    // ---- ตาราง VM (NEW_SERVER) ----
+    function addVmRow() {
+      if (vmRows.length >= MAX_VM_ROWS) return;
+      vmRows.push({ name: '', os: '', vcpu: '', ram: '', storage: '' });
+      renderVmTable();
+    }
+    function removeVmRow(idx) {
+      vmRows.splice(idx, 1);
+      renderVmTable();
+    }
+    function updateVmField(idx, field, value) {
+      vmRows[idx][field] = value;
+      updateVmTotals();
+    }
+    function updateVmTotals() {
+      function sum(key) { return vmRows.reduce(function (s, r) { return s + (parseInt(r[key], 10) || 0); }, 0); }
+      document.getElementById('vmTotalVcpu').textContent = sum('vcpu');
+      document.getElementById('vmTotalRam').textContent = sum('ram');
+      document.getElementById('vmTotalStorage').textContent = sum('storage');
+    }
+    function renderVmTable() {
+      const tbody = document.getElementById('vmTableBody');
+      tbody.innerHTML = '';
+      vmRows.forEach(function (row, idx) {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td class="py-1.5 px-2 text-slate-400">' + (idx + 1) + '</td>' +
+          '<td class="py-1.5 px-2"><input type="text" maxlength="150" value="' + escapeHtml(row.name) + '" data-vm="name" class="w-full px-2 py-1 border border-slate-300 rounded text-xs"></td>' +
+          '<td class="py-1.5 px-2"><input type="text" maxlength="100" value="' + escapeHtml(row.os) + '" data-vm="os" class="w-full px-2 py-1 border border-slate-300 rounded text-xs"></td>' +
+          '<td class="py-1.5 px-2"><input type="number" min="1" value="' + escapeHtml(row.vcpu) + '" data-vm="vcpu" class="w-full px-2 py-1 border border-slate-300 rounded text-xs"></td>' +
+          '<td class="py-1.5 px-2"><input type="number" min="1" value="' + escapeHtml(row.ram) + '" data-vm="ram" class="w-full px-2 py-1 border border-slate-300 rounded text-xs"></td>' +
+          '<td class="py-1.5 px-2"><input type="number" min="1" value="' + escapeHtml(row.storage) + '" data-vm="storage" class="w-full px-2 py-1 border border-slate-300 rounded text-xs"></td>' +
+          '<td class="py-1.5 px-2 text-center"><button type="button" onclick="removeVmRow(' + idx + ')" class="text-rose-500 hover:text-rose-700" title="ลบแถว"><i class="fa-solid fa-trash"></i></button></td>';
+        tr.querySelectorAll('[data-vm]').forEach(function (inp) {
+          inp.addEventListener('input', function () { updateVmField(idx, inp.dataset.vm, inp.value); });
+        });
+        tbody.appendChild(tr);
+      });
+      document.getElementById('btnAddVmRow').classList.toggle('hidden', vmRows.length >= MAX_VM_ROWS);
+      updateVmTotals();
+    }
+
+    // ---- CIA / PDPA Modal ----
+    function openCiaModal() {
+      if (ciaValue) {
+        document.getElementById('ciaPdpa').checked = ciaValue.pdpa;
+        document.getElementById('ciaC').value = ciaValue.c;
+        document.getElementById('ciaI').value = ciaValue.i;
+        document.getElementById('ciaA').value = ciaValue.a;
+      }
+      updateCiaPreview();
+      document.getElementById('ciaModal').classList.remove('hidden');
+    }
+    function closeCiaModal() { document.getElementById('ciaModal').classList.add('hidden'); }
+    function computeImpact(c, i, a, pdpa) {
+      let impact = Math.max(c, i, a);
+      if (pdpa && impact < 2) impact = 2;
+      return impact;
+    }
+    function updateCiaPreview() {
+      const c = parseInt(document.getElementById('ciaC').value, 10);
+      const i = parseInt(document.getElementById('ciaI').value, 10);
+      const a = parseInt(document.getElementById('ciaA').value, 10);
+      const pdpa = document.getElementById('ciaPdpa').checked;
+      const impact = computeImpact(c, i, a, pdpa);
+      const badge = document.getElementById('ciaImpactBadge');
+      badge.textContent = 'ระดับ ' + impact;
+      badge.className = 'px-3 py-1 rounded-full text-xs font-bold ' + impactBadgeClass(impact);
+    }
+    function saveCiaModal() {
+      const c = parseInt(document.getElementById('ciaC').value, 10);
+      const i = parseInt(document.getElementById('ciaI').value, 10);
+      const a = parseInt(document.getElementById('ciaA').value, 10);
+      const pdpa = document.getElementById('ciaPdpa').checked;
+      ciaValue = { c: c, i: i, a: a, pdpa: pdpa };
+      const impact = computeImpact(c, i, a, pdpa);
+      const summary = document.getElementById('ciaSummary');
+      summary.innerHTML = 'ประเมินแล้ว: ระดับ <strong>' + impact + '</strong>' + (pdpa ? ' • มีข้อมูล PDPA' : '') + ' <button type="button" onclick="openCiaModal()" class="text-theme underline ml-1">แก้ไข</button>';
+      summary.className = 'text-xs text-emerald-700 font-medium';
+      closeCiaModal();
+    }
+
+    // ---- ฟอร์มทั่วไป (CHANGE_SERVER / FIREWALL / DOMAIN / VPN) ----
+    function serverDropdownHtml(currentVal) {
+      const opts = serverOptions.map(function (s) {
+        return '<option value="' + escapeHtml(s.ip) + '" ' + (s.ip === currentVal ? 'selected' : '') + '>' + escapeHtml(s.ip) + ' — ' + escapeHtml(s.name || '(ไม่มีชื่อ)') + '</option>';
+      }).join('');
+      return '<option value="" disabled ' + (currentVal ? '' : 'selected') + '>-- เลือก IP --</option>' + opts;
+    }
+
+    function renderDynamicFields(typeConfig) {
+      const wrap = document.getElementById('dynamicFields');
+      wrap.innerHTML = '';
+      typeConfig.fields.forEach(function (f) {
+        const cell = document.createElement('div');
+        if (f.type === 'textarea') cell.className = 'sm:col-span-2';
 
         const label = document.createElement('label');
         label.className = 'block text-xs font-semibold text-gray-700 mb-1';
         label.innerHTML = escapeHtml(f.label) + (f.required ? ' <span class="text-red-500">*</span>' : '');
-        wrap.appendChild(label);
+        cell.appendChild(label);
 
         let input;
-        if (f.type === 'select') {
+        if (f.type === 'select_server') {
           input = document.createElement('select');
           input.className = 'w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#122e5a] outline-none';
-          const blank = document.createElement('option');
-          blank.value = ''; blank.textContent = '-- เลือก --'; blank.disabled = true; blank.selected = true;
-          input.appendChild(blank);
-          (f.options || []).forEach(opt => {
-            const o = document.createElement('option'); o.value = opt; o.textContent = opt;
-            input.appendChild(o);
-          });
+          input.innerHTML = serverDropdownHtml('');
+          input.addEventListener('change', function () { onServerSelectChange(typeConfig, f.key, input.value); });
+        } else if (f.type === 'select') {
+          input = document.createElement('select');
+          input.className = 'w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#122e5a] outline-none';
+          input.innerHTML = '<option value="" disabled selected>-- เลือก --</option>' +
+            (f.options || []).map(function (o) { return '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>'; }).join('');
         } else if (f.type === 'textarea') {
           input = document.createElement('textarea');
           input.rows = 2;
@@ -384,52 +622,114 @@
         input.dataset.fieldKey = f.key;
         input.maxLength = 300;
         if (f.required) input.required = true;
-        wrap.appendChild(input);
-        fieldsWrap.appendChild(wrap);
+        cell.appendChild(input);
+        wrap.appendChild(cell);
       });
     }
 
+    /** เมื่อเลือก IP_Public จาก dropdown: โชว์การ์ดสเปกเดิม (CHANGE_SERVER), pre-fill ค่าปัจจุบัน, auto-fill Resource Name (DOMAIN) */
+    function onServerSelectChange(typeConfig, fieldKey, ip) {
+      const match = serverOptions.find(function (s) { return s.ip === ip; });
+      const specCard = document.getElementById('specCard');
+
+      if (selectedType === 'CHANGE_SERVER') {
+        if (match) {
+          specCard.classList.remove('hidden');
+          specCard.innerHTML =
+            '<p class="font-bold text-sky-800 mb-1"><i class="fa-solid fa-circle-info mr-1"></i> สเปกปัจจุบันของเครื่องนี้</p>' +
+            '<div class="grid grid-cols-2 sm:grid-cols-3 gap-1">' +
+            '<div>AssetID: <strong>' + escapeHtml(match.id) + '</strong></div>' +
+            '<div>ระบบงาน: <strong>' + (escapeHtml(match.name) || '-') + '</strong></div>' +
+            '<div>OS: <strong>' + (escapeHtml(match.os) || '-') + '</strong></div>' +
+            '<div>vCPU: <strong>' + escapeHtml(match.vcpu) + '</strong></div>' +
+            '<div>RAM: <strong>' + escapeHtml(match.ram) + ' GB</strong></div>' +
+            '<div>Storage: <strong>' + escapeHtml(match.storage) + ' GB</strong></div>' +
+            '</div>';
+          const osInp = document.querySelector('[data-field-key="os"]');
+          const vcpuInp = document.querySelector('[data-field-key="vcpu"]');
+          const ramInp = document.querySelector('[data-field-key="ram"]');
+          const storInp = document.querySelector('[data-field-key="storage"]');
+          if (osInp && !osInp.value) osInp.value = match.os;
+          if (vcpuInp && !vcpuInp.value) vcpuInp.value = match.vcpu || '';
+          if (ramInp && !ramInp.value) ramInp.value = match.ram || '';
+          if (storInp && !storInp.value) storInp.value = match.storage || '';
+        } else {
+          specCard.classList.add('hidden');
+        }
+      }
+
+      if (selectedType === 'DOMAIN' && match) {
+        const nameInp = document.querySelector('[data-field-key="resourceName"]');
+        if (nameInp && !nameInp.value) nameInp.value = match.name || '';
+      }
+    }
+
     function resetTicketForm() {
-      selectedType = null;
-      document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
+      selectedType = null; selectedTypeConfig = null;
+      document.querySelectorAll('.type-card').forEach(function (c) { c.classList.remove('selected'); });
       document.getElementById('ticketFormWrap').classList.add('hidden');
       document.getElementById('ticketForm').reset();
+      document.getElementById('specCard').classList.add('hidden');
+      vmRows = []; ciaValue = null;
     }
 
     async function submitTicket(e) {
       e.preventDefault();
-      if (!selectedType) return;
+      if (!selectedType || !selectedTypeConfig) return;
 
       const err = document.getElementById('ticketFormError');
       const succ = document.getElementById('ticketFormSuccess');
       err.classList.add('hidden'); succ.classList.add('hidden');
 
-      const details = {};
-      document.querySelectorAll('#dynamicFields [data-field-key]').forEach(el => {
-        details[el.dataset.fieldKey] = el.value.trim();
-      });
-      const note = document.getElementById('ticketNote').value.trim();
+      let details;
+      if (selectedTypeConfig.kind === 'new_server') {
+        const urgency = document.getElementById('nsUrgency').value;
+        const projectName = document.getElementById('nsProjectName').value.trim();
+        if (!urgency) { err.textContent = 'กรุณาเลือกวันที่ประสงค์ใช้งาน'; err.classList.remove('hidden'); return; }
+        if (!projectName) { err.textContent = 'กรุณากรอกชื่อโครงการหรือระบบงาน'; err.classList.remove('hidden'); return; }
+        if (vmRows.length === 0) { err.textContent = 'กรุณาระบุสเปก VM อย่างน้อย 1 รายการ'; err.classList.remove('hidden'); return; }
+        for (let idx = 0; idx < vmRows.length; idx++) {
+          const r = vmRows[idx];
+          if (!r.name || !r.os || !r.vcpu || !r.ram || !r.storage) {
+            err.textContent = 'กรุณากรอกข้อมูลสเปก VM แถวที่ ' + (idx + 1) + ' ให้ครบ';
+            err.classList.remove('hidden');
+            return;
+          }
+        }
+        if (!ciaValue) { err.textContent = 'กรุณาทำแบบประเมินผลกระทบ (C-I-A) & PDPA ก่อนส่งคำขอ'; err.classList.remove('hidden'); return; }
 
+        details = {
+          urgency: urgency, projectName: projectName,
+          vmRows: vmRows.map(function (r) { return { name: r.name, os: r.os, vcpu: +r.vcpu, ram: +r.ram, storage: +r.storage }; }),
+          cia: ciaValue
+        };
+      } else {
+        details = {};
+        document.querySelectorAll('#dynamicFields [data-field-key]').forEach(function (el) { details[el.dataset.fieldKey] = el.value.trim(); });
+      }
+
+      const note = document.getElementById('ticketNote').value.trim();
       const btn = document.getElementById('btnSubmitTicket');
       btn.disabled = true;
       btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> กำลังส่ง...';
 
-      const res = await callBackend("createTicket", { type: selectedType, details, note });
+      const res = await callBackend("createTicket", { type: selectedType, details: details, note: note });
 
       btn.disabled = false;
       btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-1.5"></i> ส่งคำขอ';
 
       if (res.success) {
         succ.textContent = res.message; succ.classList.remove('hidden');
-        document.getElementById('ticketForm').reset();
         await loadMyTickets();
-        setTimeout(() => { resetTicketForm(); switchTab('mine'); }, 1200);
+        setTimeout(function () { resetTicketForm(); switchTab('mine'); }, 1200);
       } else {
         err.textContent = res.message || "เกิดข้อผิดพลาด"; err.classList.remove('hidden');
       }
     }
 
-    // ---------- my tickets ----------
+    // ==========================================================
+    // MY TICKETS
+    // ==========================================================
     async function loadMyTickets() {
       const res = await callWithRetry("listTickets");
       if (res.success) myTickets = res.tickets || [];
@@ -443,31 +743,31 @@
         tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400">ยังไม่มีคำขอ</td></tr>';
         return;
       }
-      myTickets.forEach(t => {
-        tbody.insertAdjacentHTML('beforeend', `
-          <tr class="hover:bg-slate-50">
-            <td class="py-2.5 px-3 font-mono font-semibold text-slate-800">${escapeHtml(t.id)}</td>
-            <td class="py-2.5 px-3">${escapeHtml(t.typeLabel)}</td>
-            <td class="py-2.5 px-3">${statusBadge(t.status)}</td>
-            <td class="py-2.5 px-3 text-slate-500">${fmtDate(t.createdAt)}</td>
-            <td class="py-2.5 px-3 text-center">
-              <button onclick="openTicketDetail('${escapeHtml(t.id)}', false)" class="text-theme hover:underline text-xs font-bold">ดูรายละเอียด</button>
-            </td>
-          </tr>`);
+      myTickets.forEach(function (t) {
+        tbody.insertAdjacentHTML('beforeend',
+          '<tr class="hover:bg-slate-50">' +
+          '<td class="py-2.5 px-3 font-mono font-semibold text-slate-800">' + escapeHtml(t.id) + '</td>' +
+          '<td class="py-2.5 px-3">' + escapeHtml(t.typeLabel) + '</td>' +
+          '<td class="py-2.5 px-3">' + statusBadge(t.status) + '</td>' +
+          '<td class="py-2.5 px-3 text-slate-500">' + fmtDate(t.createdAt) + '</td>' +
+          '<td class="py-2.5 px-3 text-center"><button onclick="openTicketDetail(\'' + escapeHtml(t.id) + '\', false)" class="text-theme hover:underline text-xs font-bold">ดูรายละเอียด</button></td>' +
+          '</tr>');
       });
     }
 
-    // ---------- admin ----------
+    // ==========================================================
+    // ADMIN
+    // ==========================================================
     async function loadAllTicketsForAdmin() {
       const res = await callWithRetry("listTickets");
       if (res.success) {
         allTickets = res.tickets || [];
-        const statuses = [...new Set(allTickets.map(t => t.status))];
-        const types = [...new Map(allTickets.map(t => [t.type, t.typeLabel])).entries()];
+        const statuses = Array.from(new Set(allTickets.map(function (t) { return t.status; })));
+        const typeMap = new Map(allTickets.map(function (t) { return [t.type, t.typeLabel]; }));
         const fs = document.getElementById('filterStatus');
         const ft = document.getElementById('filterType');
-        fs.innerHTML = '<option value="">ทุกสถานะ</option>' + statuses.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
-        ft.innerHTML = '<option value="">ทุกประเภท</option>' + types.map(([k, l]) => `<option value="${escapeHtml(k)}">${escapeHtml(l)}</option>`).join('');
+        fs.innerHTML = '<option value="">ทุกสถานะ</option>' + statuses.map(function (s) { return '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</option>'; }).join('');
+        ft.innerHTML = '<option value="">ทุกประเภท</option>' + Array.from(typeMap.entries()).map(function (e) { return '<option value="' + escapeHtml(e[0]) + '">' + escapeHtml(e[1]) + '</option>'; }).join('');
       }
       renderAdminTable();
     }
@@ -475,33 +775,72 @@
     function renderAdminTable() {
       const statusF = document.getElementById('filterStatus').value;
       const typeF = document.getElementById('filterType').value;
-      const filtered = allTickets.filter(t => (!statusF || t.status === statusF) && (!typeF || t.type === typeF));
+      const filtered = allTickets.filter(function (t) { return (!statusF || t.status === statusF) && (!typeF || t.type === typeF); });
 
       const tbody = document.getElementById('adminTicketsBody');
       tbody.innerHTML = '';
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400">ไม่พบคำขอ</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-slate-400">ไม่พบคำขอ</td></tr>';
         return;
       }
-      filtered.forEach(t => {
-        tbody.insertAdjacentHTML('beforeend', `
-          <tr class="hover:bg-slate-50">
-            <td class="py-2.5 px-3 font-mono font-semibold text-slate-800">${escapeHtml(t.id)}</td>
-            <td class="py-2.5 px-3">${escapeHtml(t.agency)}</td>
-            <td class="py-2.5 px-3">${escapeHtml(t.requesterName)}<br><span class="text-slate-400 text-[10px]">${escapeHtml(t.requesterEmail)}</span></td>
-            <td class="py-2.5 px-3">${escapeHtml(t.typeLabel)}</td>
-            <td class="py-2.5 px-3">${statusBadge(t.status)}</td>
-            <td class="py-2.5 px-3 text-slate-500">${fmtDate(t.createdAt)}</td>
-            <td class="py-2.5 px-3 text-center">
-              <button onclick="openTicketDetail('${escapeHtml(t.id)}', true)" class="text-theme hover:underline text-xs font-bold">จัดการ</button>
-            </td>
-          </tr>`);
+      filtered.forEach(function (t) {
+        const syncBadge = t.syncedAssetIds
+          ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200" title="' + escapeHtml(t.syncedAssetIds) + '"><i class="fa-solid fa-check mr-1"></i>บันทึกแล้ว</span>'
+          : '<span class="text-slate-300 text-[10px]">-</span>';
+        tbody.insertAdjacentHTML('beforeend',
+          '<tr class="hover:bg-slate-50">' +
+          '<td class="py-2.5 px-3 font-mono font-semibold text-slate-800">' + escapeHtml(t.id) + '</td>' +
+          '<td class="py-2.5 px-3">' + escapeHtml(t.agency) + '</td>' +
+          '<td class="py-2.5 px-3">' + escapeHtml(t.requesterName) + '<br><span class="text-slate-400 text-[10px]">' + escapeHtml(t.requesterEmail) + '</span></td>' +
+          '<td class="py-2.5 px-3">' + escapeHtml(t.typeLabel) + '</td>' +
+          '<td class="py-2.5 px-3">' + statusBadge(t.status) + '</td>' +
+          '<td class="py-2.5 px-3">' + syncBadge + '</td>' +
+          '<td class="py-2.5 px-3 text-slate-500">' + fmtDate(t.createdAt) + '</td>' +
+          '<td class="py-2.5 px-3 text-center"><button onclick="openTicketDetail(\'' + escapeHtml(t.id) + '\', true)" class="text-theme hover:underline text-xs font-bold">จัดการ</button></td>' +
+          '</tr>');
       });
     }
 
-    // ---------- ticket detail modal ----------
+    // ==========================================================
+    // TICKET DETAIL MODAL
+    // ==========================================================
     function findTicket(id) {
-      return allTickets.find(t => t.id === id) || myTickets.find(t => t.id === id);
+      return allTickets.find(function (t) { return t.id === id; }) || myTickets.find(function (t) { return t.id === id; });
+    }
+
+    function renderDetailBlock(t) {
+      if (t.type === 'NEW_SERVER') {
+        const d = t.details || {};
+        const cia = d.cia || {};
+        const vmRowsHtml = (d.vmRows || []).map(function (r) {
+          return '<tr class="border-b border-slate-100">' +
+            '<td class="py-1 px-2">' + escapeHtml(r.name) + '</td>' +
+            '<td class="py-1 px-2">' + escapeHtml(r.os) + '</td>' +
+            '<td class="py-1 px-2 text-center">' + escapeHtml(r.vcpu) + '</td>' +
+            '<td class="py-1 px-2 text-center">' + escapeHtml(r.ram) + '</td>' +
+            '<td class="py-1 px-2 text-center">' + escapeHtml(r.storage) + '</td>' +
+            '</tr>';
+        }).join('');
+        const impactLvl = Math.max(cia.c || 1, cia.i || 1, cia.a || 1);
+        return (
+          '<div class="text-xs bg-slate-50 rounded-lg p-3 border border-slate-100 space-y-1 mb-2">' +
+          '<div><span class="text-slate-500">วันที่ประสงค์ใช้งาน:</span> <strong>' + escapeHtml(d.urgency) + '</strong></div>' +
+          '<div><span class="text-slate-500">โครงการ/ระบบงาน:</span> <strong>' + escapeHtml(d.projectName) + '</strong></div>' +
+          '</div>' +
+          '<table class="w-full text-xs border-collapse mb-2">' +
+          '<thead><tr class="bg-slate-100 text-slate-600"><th class="py-1 px-2 text-left">VM</th><th class="py-1 px-2 text-left">OS</th><th class="py-1 px-2">vCPU</th><th class="py-1 px-2">RAM</th><th class="py-1 px-2">Storage</th></tr></thead>' +
+          '<tbody>' + vmRowsHtml + '</tbody></table>' +
+          '<div class="flex items-center gap-2 text-xs mb-2">' +
+          '<span class="text-slate-500">ผลประเมิน:</span>' +
+          '<span class="px-2 py-0.5 rounded-full font-bold ' + impactBadgeClass(impactLvl) + '">ระดับ ' + impactLvl + '</span>' +
+          (cia.pdpa ? '<span class="text-rose-600 font-semibold"><i class="fa-solid fa-shield-halved mr-1"></i>มีข้อมูล PDPA</span>' : '') +
+          '</div>'
+        );
+      }
+      const rows = Object.keys(t.details || {}).map(function (k) {
+        return '<div class="flex justify-between border-b border-slate-100 py-1.5"><span class="text-slate-500">' + escapeHtml(k) + '</span><span class="font-semibold text-slate-800">' + (escapeHtml(t.details[k]) || '-') + '</span></div>';
+      }).join('');
+      return '<div class="bg-slate-50 rounded-lg p-3 border border-slate-100 mb-3">' + (rows || '-') + '</div>';
     }
 
     function openTicketDetail(id, adminMode) {
@@ -510,37 +849,27 @@
 
       document.getElementById('modalTicketTitle').textContent = t.id + ' — ' + t.typeLabel;
 
-      let detailRows = Object.keys(t.details || {}).map(k =>
-        `<div class="flex justify-between border-b border-slate-100 py-1.5"><span class="text-slate-500">${escapeHtml(k)}</span><span class="font-semibold text-slate-800">${escapeHtml(t.details[k]) || '-'}</span></div>`
-      ).join('');
-
-      let html = `
-        <div class="flex justify-between items-center mb-2">
-          <span class="text-xs text-slate-500">สถานะปัจจุบัน</span>${statusBadge(t.status)}
-        </div>
-        <div class="text-xs text-slate-500 mb-3">
-          ผู้ยื่น: <strong class="text-slate-700">${escapeHtml(t.requesterName)}</strong> (${escapeHtml(t.requesterEmail)})<br>
-          หน่วยงาน: ${escapeHtml(t.agency)} • ยื่นเมื่อ ${fmtDate(t.createdAt)}
-        </div>
-        <div class="bg-slate-50 rounded-lg p-3 border border-slate-100 mb-3">${detailRows || '-'}</div>
-        ${t.note ? `<div class="mb-3"><p class="text-xs font-semibold text-slate-500 mb-1">หมายเหตุจากผู้ยื่น</p><p class="text-sm bg-slate-50 rounded-lg p-2 border border-slate-100">${escapeHtml(t.note)}</p></div>` : ''}
-        ${t.adminComment ? `<div class="mb-3"><p class="text-xs font-semibold text-slate-500 mb-1">ความเห็นจากผู้ดูแล</p><p class="text-sm bg-sky-50 rounded-lg p-2 border border-sky-100">${escapeHtml(t.adminComment)}</p></div>` : ''}
-      `;
+      let html =
+        '<div class="flex justify-between items-center mb-2"><span class="text-xs text-slate-500">สถานะปัจจุบัน</span>' + statusBadge(t.status) + '</div>' +
+        '<div class="text-xs text-slate-500 mb-3">ผู้ยื่น: <strong class="text-slate-700">' + escapeHtml(t.requesterName) + '</strong> (' + escapeHtml(t.requesterEmail) + ')<br>' +
+        'หน่วยงาน: ' + escapeHtml(t.agency) + ' • ยื่นเมื่อ ' + fmtDate(t.createdAt) + '</div>' +
+        renderDetailBlock(t) +
+        (t.note ? '<div class="mb-3"><p class="text-xs font-semibold text-slate-500 mb-1">หมายเหตุจากผู้ยื่น</p><p class="text-sm bg-slate-50 rounded-lg p-2 border border-slate-100">' + escapeHtml(t.note) + '</p></div>' : '') +
+        (t.adminComment ? '<div class="mb-3"><p class="text-xs font-semibold text-slate-500 mb-1">ความเห็นจากผู้ดูแล</p><p class="text-sm bg-sky-50 rounded-lg p-2 border border-sky-100">' + escapeHtml(t.adminComment) + '</p></div>' : '') +
+        (t.syncedAssetIds ? '<div class="mb-3 text-xs bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-emerald-800"><i class="fa-solid fa-check-circle mr-1"></i> บันทึกลงทะเบียนสินทรัพย์แล้ว: <strong>' + escapeHtml(t.syncedAssetIds) + '</strong></div>' : '');
 
       if (adminMode && isAdmin) {
-        html += `
-          <div class="border-t border-slate-100 pt-4 mt-2">
-            <label class="block text-xs font-semibold text-gray-700 mb-1">เปลี่ยนสถานะ</label>
-            <select id="modalStatusSelect" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm mb-3">
-              ${Object.keys(STATUS_COLOR).map(s => `<option value="${escapeHtml(s)}" ${s === t.status ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}
-            </select>
-            <label class="block text-xs font-semibold text-gray-700 mb-1">ความเห็น/เหตุผล</label>
-            <textarea id="modalCommentInput" rows="2" maxlength="500" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm mb-3">${escapeHtml(t.adminComment)}</textarea>
-            <div id="modalAdminError" class="hidden mb-3 p-2 bg-red-100 text-red-600 text-xs rounded-lg border border-red-300"></div>
-            <button onclick="saveTicketStatus('${escapeHtml(t.id)}')" class="w-full px-4 py-2.5 bg-theme text-white text-sm font-bold rounded-lg hover:opacity-90 transition">
-              <i class="fa-solid fa-check mr-1.5"></i> บันทึกการเปลี่ยนแปลง
-            </button>
-          </div>`;
+        html +=
+          '<div class="border-t border-slate-100 pt-4 mt-2">' +
+          '<label class="block text-xs font-semibold text-gray-700 mb-1">เปลี่ยนสถานะ</label>' +
+          '<select id="modalStatusSelect" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm mb-3">' +
+          Object.keys(STATUS_COLOR).map(function (s) { return '<option value="' + escapeHtml(s) + '" ' + (s === t.status ? 'selected' : '') + '>' + escapeHtml(s) + '</option>'; }).join('') +
+          '</select>' +
+          '<label class="block text-xs font-semibold text-gray-700 mb-1">ความเห็น/เหตุผล</label>' +
+          '<textarea id="modalCommentInput" rows="2" maxlength="500" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm mb-3">' + escapeHtml(t.adminComment) + '</textarea>' +
+          '<div id="modalAdminError" class="hidden mb-3 p-2 bg-red-100 text-red-600 text-xs rounded-lg border border-red-300"></div>' +
+          '<button onclick="saveTicketStatus(\'' + escapeHtml(t.id) + '\')" class="w-full px-4 py-2.5 bg-theme text-white text-sm font-bold rounded-lg hover:opacity-90 transition"><i class="fa-solid fa-check mr-1.5"></i> บันทึกการเปลี่ยนแปลง</button>' +
+          '</div>';
       }
 
       document.getElementById('modalTicketBody').innerHTML = html;
@@ -555,10 +884,13 @@
       const err = document.getElementById('modalAdminError');
       err.classList.add('hidden');
 
-      const res = await callBackend("updateTicketStatus", { ticketId, status, adminComment });
+      const res = await callBackend("updateTicketStatus", { ticketId: ticketId, status: status, adminComment: adminComment });
       if (res.success) {
         closeTicketModal();
         await loadAllTicketsForAdmin();
+        const optsRes = await callWithRetry("getServerOptions");
+        if (optsRes.success) serverOptions = optsRes.options || [];
+        if (res.message) alert(res.message);
       } else {
         err.textContent = res.message || "เกิดข้อผิดพลาด";
         err.classList.remove('hidden');
