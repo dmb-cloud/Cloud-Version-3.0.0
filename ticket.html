@@ -590,7 +590,7 @@
     function renderDynamicFields(typeConfig) {
       const wrap = document.getElementById('dynamicFields');
       wrap.innerHTML = '';
-      typeConfig.fields.forEach(function (f) {
+      (typeConfig.fields || []).forEach(function (f) {
         const cell = document.createElement('div');
         if (f.type === 'textarea') cell.className = 'sm:col-span-2';
 
@@ -645,6 +645,7 @@
             '<div>RAM: <strong>' + escapeHtml(match.ram) + ' GB</strong></div>' +
             '<div>Storage: <strong>' + escapeHtml(match.storage) + ' GB</strong></div>' +
             '</div>';
+
           const osInp = document.querySelector('[data-field-key="os"]');
           const vcpuInp = document.querySelector('[data-field-key="vcpu"]');
           const ramInp = document.querySelector('[data-field-key="ram"]');
@@ -898,4 +899,5 @@
     }
   </script>
 </body>
+
 </html>
