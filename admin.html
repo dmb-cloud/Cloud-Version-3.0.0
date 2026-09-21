@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Management — DMS Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style> body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; } </style>
+</head>
+
+<body class="min-h-screen pb-16">
+
+  <!-- Header -->
+  <header class="bg-rose-800 text-white py-4 px-6 shadow-md sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto flex justify-between items-center">
+      <div>
+        <h1 class="text-lg font-bold"><i class="fa-solid fa-users-gear mr-2"></i>ระบบจัดการสิทธิ์ผู้ใช้งาน (Admin Management)</h1>
+        <a href="index.html" class="text-white/70 text-xs hover:underline flex items-center gap-1 mt-1">
+          <i class="fa-solid fa-arrow-left"></i> กลับหน้ารายการสินทรัพย์
+        </a>
+      </div>
+      <div class="flex items-center gap-3 text-xs bg-black/20 px-4 py-2 rounded-full">
+        <span id="profileName" class="font-medium">ผู้ใช้งาน</span> | <span class="text-rose-200 font-bold">แอดมินระบบ</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 pt-8 space-y-5">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-base font-bold text-slate-800">รายชื่อผู้ใช้งานในระบบ</h2>
+        <button onclick="loadUsers()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">
+          <i class="fa-solid fa-arrows-rotate mr-1"></i> โหลดข้อมูลใหม่
+        </button>
+      </div>
+
+      <div class="overflow-x-auto rounded-lg border border-slate-200">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-slate-100 text-slate-700">
+            <tr>
+              <th class="p-3 w-10">No.</th>
+              <th class="p-3">ชื่อ-นามสกุล</th>
+              <th class="p-3">อีเมล</th>
+              <th class="p-3">หน่วยงาน</th>
+              <th class="p-3 w-32">สิทธิ์ (Role)</th>
+              <th class="p-3 w-32">สถานะบัญชี</th>
+              <th class="p-3 text-center w-28">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody" class="divide-y divide-slate-100">
+            <tr><td colspan="7" class="p-8 text-center text-slate-400">กำลังโหลดข้อมูล...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // 🔴 วาง URL Google Apps Script ของคุณที่นี่
+    const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwxRHjkBBTSTeAlbE14eDzPpdBBT2OnJCJW0YgcHLGXeqkxoNtRLosafoDygxi5tOQU/exec";
+
+    async function callBackend(action, payload = {}) {
+      const token = sessionStorage.getItem('access_token') || "";
+      payload.token = token;
+      const res = await fetch(BACKEND_URL, { method: 'POST', body: JSON.stringify({ action, payload }) });
+      return await res.json();
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const role = sessionStorage.getItem('mfa_role');
+      if (role !== "admin") {
+        alert("ขออภัย คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
+        window.location.href = "index.html";
+        return;
+      }
+      document.getElementById("profileName").textContent = sessionStorage.getItem("mfa_name");
+      await loadUsers();
+    });
+
+    async function loadUsers() {
+      const tbody = document.getElementById("userTableBody");
+      tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังดึงข้อมูล...</td></tr>`;
+      
+      const res = await callBackend("getAllUsers");
+      if (res && res.success && res.data && res.data.users) {
+        tbody.innerHTML = "";
+        res.data.users.forEach((u, idx) => {
+          tbody.insertAdjacentHTML("beforeend", `
+            <tr class="hover:bg-slate-50 transition" id="row-${idx}">
+              <td class="p-3 font-bold text-slate-400 text-center">${idx + 1}</td>
+              <td class="p-3 font-medium text-slate-800">${u.fullname}<br><span class="text-[10px] text-slate-400">📱 ${u.phone}</span></td>
+              <td class="p-3 text-slate-600">${u.email}</td>
+              <td class="p-3 text-slate-600">${u.agency}</td>
+              <td class="p-3">
+                <select id="role-${idx}" class="w-full p-1.5 border border-slate-300 rounded outline-none font-semibold ${u.role === 'admin' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-white text-slate-700'}">
+                  <option value="user" ${u.role === 'user' ? 'selected' : ''}>User (ผู้ใช้งาน)</option>
+                  <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin (ผู้ดูแลระบบ)</option>
+                </select>
+              </td>
+              <td class="p-3">
+                <select id="active-${idx}" class="w-full p-1.5 border border-slate-300 rounded outline-none font-semibold ${u.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}">
+                  <option value="true" ${u.isActive ? 'selected' : ''}>✅ อนุมัติ / ใช้งาน</option>
+                  <option value="false" ${!u.isActive ? 'selected' : ''}>⏳ ระงับ / รออนุมัติ</option>
+                </select>
+              </td>
+              <td class="p-3 text-center">
+                <button onclick="saveUser('${u.email}', ${idx})" class="px-3 py-1.5 bg-[#0f1d36] text-white font-bold rounded shadow hover:bg-slate-800 transition text-[11px]">
+                  <i class="fa-solid fa-save mr-1"></i> บันทึก
+                </button>
+              </td>
+            </tr>
+          `);
+        });
+      } else {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-rose-500">ดึงข้อมูลล้มเหลว หรือเซสชันหมดอายุ</td></tr>`;
+      }
+    }
+
+    async function saveUser(email, idx) {
+      const btn = document.querySelector(`#row-${idx} button`);
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+      btn.disabled = true;
+
+      const newRole = document.getElementById(`role-${idx}`).value;
+      const isActive = document.getElementById(`active-${idx}`).value === "true";
+
+      const res = await callBackend("updateUser", { email: email, role: newRole, isActive: isActive });
+      
+      btn.innerHTML = originalHtml;
+      btn.disabled = false;
+
+      if (res && res.success) {
+        alert("✅ อัปเดตข้อมูลของ " + email + " สำเร็จ!");
+        loadUsers();
+      } else {
+        alert("❌ เกิดข้อผิดพลาด: " + (res.message || ""));
+      }
+    }
+  </script>
+</body>
+</html>
