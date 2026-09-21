@@ -6,22 +6,51 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>DMS Cloud Registry — ระบบคำขอ (Ticket)</title>
+  
+  <!-- Google Fonts: Sarabun -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS & Font Awesome -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
-    body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; color: #0f172a; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
     :root { --theme: #0f1d36; }
     .type-card.selected { border-color: var(--theme) !important; background: #eff6ff; }
     .help-badge {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 14px; height: 14px; border-radius: 9999px;
-      background-color: #0284c7; color: #fff; font-size: 9px; font-weight: bold;
-      margin-left: 3px; vertical-align: middle; cursor: help;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 9999px;
+      background-color: #0284c7;
+      color: #ffffff;
+      font-size: 9px;
+      font-weight: bold;
+      margin-left: 3px;
+      vertical-align: middle;
+      cursor: help;
     }
-    .tab-active { background: var(--theme); color: #fff; }
+
+    /* Print Stylesheet (A4 Portrait) */
+    @media print {
+      @page { size: A4 portrait; margin: 12mm; }
+      body { background: #ffffff !important; color: #000000 !important; font-size: 10pt !important; }
+      header, nav, .no-print, #toastContainer, #draftNotice, button, .help-badge { display: none !important; }
+      .max-w-5xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+      .border, .rounded-xl { border: 1px solid #cbd5e1 !important; border-radius: 0 !important; box-shadow: none !important; }
+      table { width: 100% !important; border-collapse: collapse !important; font-size: 9pt !important; }
+      table th, table td { border: 1px solid #94a3b8 !important; padding: 4px 6px !important; }
+      input, select, textarea { border: none !important; background: transparent !important; appearance: none; font-weight: 600; }
+    }
   </style>
 </head>
 
@@ -31,13 +60,13 @@
   <div id="loadingOverlay" class="fixed inset-0 bg-slate-50/95 z-50 flex flex-col items-center justify-center transition-opacity duration-300">
     <i class="fa-solid fa-circle-notch fa-spin text-4xl text-[#0f1d36] mb-4"></i>
     <h2 class="text-lg font-bold text-slate-800">กำลังโหลดข้อมูล...</h2>
-    <p class="text-xs text-slate-400 mt-1" id="loadingMsg">กำลังตรวจสอบ session...</p>
+    <p class="text-xs text-slate-400 mt-1" id="loadingMsg">กำลังตรวจสอบสิทธิ์การใช้งาน...</p>
   </div>
 
   <!-- Toast Container -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
 
-  <!-- Header -->
+  <!-- Header / Navigation Bar -->
   <header class="bg-[#0f1d36] text-white py-3.5 px-4 sm:px-8 shadow-xs sticky top-0 z-40">
     <div class="max-w-6xl mx-auto flex justify-between items-center">
       <div>
@@ -47,6 +76,8 @@
           <span>กลับหน้ารายการสินทรัพย์</span>
         </a>
       </div>
+
+      <!-- User Profile Badge -->
       <div class="flex items-center gap-2 sm:gap-3 text-xs bg-black/25 px-3 py-1.5 rounded-full border border-white/10">
         <div class="flex items-center gap-1.5 font-medium">
           <i class="fa-regular fa-user text-slate-300"></i>
@@ -63,7 +94,7 @@
           <span id="sessionTimer">--:--</span>
         </div>
         <span class="text-white/30">|</span>
-        <button type="button" onclick="openLogoutModal()" class="text-rose-300 hover:text-rose-100 flex items-center gap-1 font-medium transition">
+        <button type="button" onclick="doLogout()" class="text-rose-300 hover:text-rose-100 flex items-center gap-1 font-medium transition">
           <i class="fa-solid fa-right-from-bracket text-[11px]"></i>
           <span class="hidden sm:inline">ออกจากระบบ</span>
         </button>
@@ -74,125 +105,197 @@
   <!-- Main Container -->
   <main class="max-w-5xl mx-auto px-4 sm:px-6 pt-6 space-y-5">
 
-    <!-- Tabs -->
+    <!-- Top Tabs (ยื่นคำขอใหม่ vs คำขอของฉัน vs จัดการคำขอ Admin) -->
     <div class="flex gap-2">
       <button type="button" id="tabBtnNew" onclick="switchMainTab('new')"
-              class="tab-active px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 shadow-2xs">
-        <i class="fa-solid fa-plus text-[11px]"></i><span>ยื่นคำขอใหม่</span>
+              class="px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-[#0f1d36] text-white shadow-2xs">
+        <i class="fa-solid fa-plus text-[11px]"></i>
+        <span>ยื่นคำขอใหม่</span>
       </button>
+
       <button type="button" id="tabBtnMine" onclick="switchMainTab('mine')"
               class="px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
-        <i class="fa-solid fa-list-check text-[11px]"></i><span>คำขอของฉัน</span>
+        <i class="fa-solid fa-list-check text-[11px]"></i>
+        <span>คำขอของฉัน</span>
       </button>
+
       <button type="button" id="tabBtnAdmin" onclick="switchMainTab('admin')"
-              class="hidden px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-white text-slate-600 hover:bg-slate-50 border border-slate-200">
-        <i class="fa-solid fa-user-shield text-[11px]"></i><span>จัดการคำขอทั้งหมด</span>
+              class="hidden px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-white text-rose-700 hover:bg-rose-50 border border-rose-200">
+        <i class="fa-solid fa-user-shield text-[11px]"></i>
+        <span>จัดการคำขอทั้งหมด (Admin)</span>
       </button>
     </div>
 
-    <!-- ============ TAB: NEW TICKET ============ -->
+    <!-- =============================================================== -->
+    <!-- TAB 1: ยื่นคำขอใหม่                                             -->
+    <!-- =============================================================== -->
     <div id="tabNew" class="space-y-4">
       <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-6">
+
         <div>
           <h2 class="text-sm sm:text-base font-bold text-slate-800">เลือกประเภทคำขอ</h2>
           <p class="text-xs text-slate-500 mt-0.5">เลือกประเภทที่ต้องการ แล้วกรอกรายละเอียดด้านล่าง</p>
         </div>
 
-        <!-- Type Cards (populated by JS) -->
-        <div id="typeCardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        <!-- Grid 5 Type Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <button type="button" onclick="selectTicketType('NEW_SERVER')" data-type="NEW_SERVER"
+                  class="type-card text-left p-4 rounded-xl border border-slate-200 hover:border-slate-400 bg-white cursor-pointer shadow-2xs transition">
+            <i class="fa-solid fa-server text-xl text-[#0f1d36] mb-2"></i>
+            <p class="text-xs sm:text-sm font-bold text-slate-800">ขอใช้บริการ Server</p>
+          </button>
 
-        <!-- Dynamic Form Area -->
-        <div id="ticketFormWrap" class="hidden border-t border-slate-100 pt-5 space-y-5">
-          <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
-            <i id="selectedTypeIcon" class="fa-solid fa-file text-teal-600"></i>
-            <h3 id="selectedTypeLabel" class="text-sm font-bold text-[#0f1d36]"></h3>
-          </div>
+          <button type="button" onclick="selectTicketType('RESIZE_SERVER')" data-type="RESIZE_SERVER"
+                  class="type-card text-left p-4 rounded-xl border border-slate-200 hover:border-slate-400 bg-white cursor-pointer shadow-2xs transition">
+            <i class="fa-solid fa-arrows-rotate text-xl text-[#0f1d36] mb-2"></i>
+            <p class="text-xs sm:text-sm font-bold text-slate-800">ขอเปลี่ยนแปลงทรัพยากร Server</p>
+          </button>
 
-          <!-- ===== NEW_SERVER: custom VM table form ===== -->
-          <div id="formNewServer" class="hidden space-y-5">
-            <form id="serverRequestForm" onsubmit="submitNewServerForm(event)" class="space-y-5">
-              <!-- วันที่ + ชื่อโครงการ -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">วันที่ประสงค์ใช้งาน <span class="text-rose-500">*</span></label>
-                  <select id="srv_requestTimeline" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-[#0f1d36] outline-none">
-                    <option value="" disabled selected>-- เลือก --</option>
+          <button type="button" onclick="selectTicketType('FIREWALL')" data-type="FIREWALL"
+                  class="type-card text-left p-4 rounded-xl border border-slate-200 hover:border-slate-400 bg-white cursor-pointer shadow-2xs transition">
+            <i class="fa-solid fa-shield-halved text-xl text-[#0f1d36] mb-2"></i>
+            <p class="text-xs sm:text-sm font-bold text-slate-800">ขอเปลี่ยนแปลง Policy Firewall Server</p>
+          </button>
+
+          <button type="button" onclick="selectTicketType('DOMAIN')" data-type="DOMAIN"
+                  class="type-card text-left p-4 rounded-xl border border-slate-200 hover:border-slate-400 bg-white cursor-pointer shadow-2xs transition">
+            <i class="fa-solid fa-globe text-xl text-[#0f1d36] mb-2"></i>
+            <p class="text-xs sm:text-sm font-bold text-slate-800">ขอใช้บริการ Domain</p>
+          </button>
+
+          <button type="button" onclick="selectTicketType('VPN')" data-type="VPN"
+                  class="type-card text-left p-4 rounded-xl border border-slate-200 hover:border-slate-400 bg-white cursor-pointer shadow-2xs transition">
+            <i class="fa-solid fa-network-wired text-xl text-[#0f1d36] mb-2"></i>
+            <p class="text-xs sm:text-sm font-bold text-slate-800">ขอใช้บริการ VPN</p>
+          </button>
+        </div>
+
+        <div class="border-t border-slate-100 pt-5">
+
+          <!-- FORM 1: ขอใช้บริการ Server -->
+          <div id="formNewServer" class="space-y-5">
+            <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
+              <i class="fa-solid fa-server text-teal-600"></i>
+              <h3 class="text-sm font-bold text-[#0f1d36]">ขอใช้บริการ Server</h3>
+            </div>
+
+            <form id="serverRequestForm" onsubmit="submitActiveTicket(event)" class="space-y-5">
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 items-center">
+                <div class="sm:col-span-3">
+                  <label for="requestTimeline" class="block text-xs font-bold text-slate-700">
+                    วันที่ประสงค์ใช้งาน <span class="text-rose-500">*</span>
+                  </label>
+                </div>
+                <div class="sm:col-span-9">
+                  <select id="requestTimeline" name="requestTimeline" required
+                          class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-[#0f1d36] outline-none">
+                    <option value="" disabled selected>-- เลือกวันที่ประสงค์ใช้งาน --</option>
                     <option value="1-7 วัน (เร่งด่วน)">1-7 วัน (เร่งด่วน)</option>
                     <option value="ภายใน 1 เดือน">ภายใน 1 เดือน</option>
                     <option value="ภายใน 3 เดือน">ภายใน 3 เดือน</option>
                   </select>
                 </div>
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อโครงการ / ระบบงาน <span class="text-rose-500">*</span></label>
-                  <input type="text" id="srv_projectName" required placeholder="ระบุชื่อโครงการ"
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 items-center">
+                <div class="sm:col-span-3">
+                  <label for="projectName" class="block text-xs font-bold text-slate-700">
+                    ชื่อโครงการ หรือระบบงาน <span class="text-rose-500">*</span>
+                  </label>
+                </div>
+                <div class="sm:col-span-9">
+                  <input type="text" id="projectName" name="projectName" required
+                         placeholder="ระบุชื่อโครงการ หรือระบบงาน"
                          class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-[#0f1d36] outline-none">
                 </div>
               </div>
 
-              <!-- VM Table -->
-              <div class="space-y-2">
+              <!-- รายละเอียด VM -->
+              <div class="space-y-2 pt-2">
                 <div class="flex justify-between items-center">
-                  <span class="text-xs font-bold text-slate-700">รายละเอียด VM <span class="text-slate-400 font-normal text-[11px]">(สูงสุด 5 แถว)</span></span>
-                  <span id="rowCountDisplay" class="text-[11px] font-bold text-slate-500">1 / 5</span>
+                  <span class="text-xs font-bold text-slate-700">
+                    รายละเอียด VM <span class="text-slate-400 font-normal text-[11px]">(จำกัดสูงสุด 5 แถว)</span>
+                  </span>
+                  <div class="flex items-center gap-2">
+                    <span id="rowLimitBadge" class="hidden text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
+                      ครบ 5 รายการแล้ว
+                    </span>
+                    <span class="text-[11px] font-bold text-slate-500" id="rowCountDisplay">1 / 5</span>
+                  </div>
                 </div>
+
                 <div class="overflow-x-auto rounded-lg border border-slate-200">
-                  <table class="w-full text-xs text-left border-collapse min-w-[680px]">
+                  <table class="w-full text-xs text-left border-collapse min-w-[700px]">
                     <thead>
                       <tr class="bg-slate-50 text-slate-700 border-b border-slate-200 font-semibold text-[11px]">
-                        <th class="py-2.5 px-3 text-center w-8">No.</th>
-                        <th class="py-2.5 px-2 min-w-[110px]">ชื่อ/หน้าที่ <span class="text-rose-500">*</span></th>
-                        <th class="py-2.5 px-2 min-w-[100px]">ประเภทระบบ</th>
-                        <th class="py-2.5 px-2 min-w-[130px]">OS <span class="text-rose-500">*</span></th>
-                        <th class="py-2.5 px-1 text-center w-14">vCPU</th>
-                        <th class="py-2.5 px-1 text-center w-14">RAM(GB)</th>
-                        <th class="py-2.5 px-1 text-center w-16">Storage(GB)</th>
-                        <th class="py-2.5 px-2 min-w-[90px]">Network</th>
-                        <th class="py-2.5 px-2 text-center w-8"></th>
+                        <th class="py-2.5 px-3 text-center w-10">No.</th>
+                        <th class="py-2.5 px-2 min-w-[130px]">ชื่อหรือหน้าที่ <span class="text-rose-500">*</span></th>
+                        <th class="py-2.5 px-2 min-w-[110px]">ประเภทระบบ</th>
+                        <th class="py-2.5 px-2 min-w-[140px]">OS <span class="text-rose-500">*</span></th>
+                        <th class="py-2.5 px-1 text-center w-16">vCPU (Core)</th>
+                        <th class="py-2.5 px-1 text-center w-16">RAM (GB)</th>
+                        <th class="py-2.5 px-1 text-center w-20">Storage (GB)</th>
+                        <th class="py-2.5 px-2 min-w-[100px]">Network</th>
+                        <th class="py-2.5 px-2 text-center w-10"></th>
                       </tr>
                     </thead>
                     <tbody id="vmTableBody" class="divide-y divide-slate-100 bg-white"></tbody>
                     <tfoot>
-                      <tr class="bg-slate-50 border-t border-slate-200 text-xs font-bold text-slate-700">
-                        <td colspan="4" class="py-2 px-3 text-right text-slate-500">รวม:</td>
-                        <td class="py-2 px-1 text-center text-teal-700 bg-teal-50/50"><span id="totalVcpu">0</span></td>
-                        <td class="py-2 px-1 text-center text-teal-700 bg-teal-50/50"><span id="totalRam">0</span></td>
-                        <td class="py-2 px-1 text-center text-teal-700 bg-teal-50/50"><span id="totalStorage">0</span></td>
-                        <td colspan="2" class="py-2 px-2 text-slate-400 text-[11px]"><strong id="totalVmCount">0</strong> เครื่อง</td>
+                      <tr class="bg-slate-50 font-bold text-slate-800 border-t border-slate-200 text-xs">
+                        <td colspan="4" class="py-2.5 px-3 text-right text-slate-600">รวมทั้งหมด (Total):</td>
+                        <td class="py-2.5 px-1 text-center text-teal-800 font-bold bg-teal-50/50"><span id="totalVcpu">0</span></td>
+                        <td class="py-2.5 px-1 text-center text-teal-800 font-bold bg-teal-50/50"><span id="totalRam">0</span></td>
+                        <td class="py-2.5 px-1 text-center text-teal-800 font-bold bg-teal-50/50"><span id="totalStorage">0</span></td>
+                        <td colspan="2" class="py-2.5 px-2 text-slate-500 text-[11px]"><strong id="totalVmCount">0</strong> เครื่อง</td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
-                <button type="button" id="btnAddRow" onclick="addVmRow()"
-                        class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5">
-                  <i class="fa-solid fa-plus text-xs"></i><span>+ เพิ่มแถว</span>
-                </button>
+
+                <div>
+                  <button type="button" id="btnAddRow" onclick="addVmRow()"
+                          class="btn-add-row w-full py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span>+ เพิ่มแถว</span>
+                  </button>
+                </div>
               </div>
 
-              <!-- Risk Assessment -->
+              <!-- แบบประเมินผลกระทบ (C-I-A & ข้อมูล PDPA) -->
               <div class="border border-slate-200 rounded-xl p-4 sm:p-5 bg-white space-y-4">
                 <div class="flex items-center justify-between">
                   <h4 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-2">
                     <i class="fa-solid fa-shield-halved text-teal-600"></i>
                     <span>แบบประเมินผลกระทบ</span>
                   </h4>
-                  <span id="riskResultBadge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">ความเสี่ยงต่ำ</span>
+                  <span id="riskResultBadge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    ความเสี่ยงต่ำ
+                  </span>
                 </div>
+
                 <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-xs space-y-2">
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label class="block font-bold text-slate-700 mb-1">โอกาสเกิด (Likelihood) <span class="text-rose-500">*</span></label>
-                      <select id="srv_riskLikelihood" required onchange="updateRiskBadge()" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs outline-none">
-                        <option value="1">ต่ำ — แทบไม่เคยเกิดขึ้น</option>
-                        <option value="2">ปานกลาง — เกิดเป็นครั้งคราว</option>
-                        <option value="3">สูง — มีโอกาสเกิดบ่อย</option>
+                      <label for="riskLikelihood" class="block font-bold text-slate-700 mb-1">
+                        โปรดประเมิน โอกาสเกิด (Likelihood) <span class="text-rose-500">*</span>
+                      </label>
+                      <select id="riskLikelihood" name="riskLikelihood" required
+                              class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs outline-none">
+                        <option value="1">ต่ำ — โอกาสเกิดขึ้นน้อยมาก หรือแทบไม่เคยเกิดขึ้น</option>
+                        <option value="2">ปานกลาง — อาจเกิดขึ้นได้เป็นครั้งคราว</option>
+                        <option value="3">สูง — มีโอกาสเกิดขึ้นบ่อยครั้งหรือมีความเสี่ยงสูง</option>
                       </select>
                     </div>
+
                     <div>
-                      <label class="block font-bold text-slate-700 mb-1">ผลกระทบ (Impact) <span class="text-rose-500">*</span></label>
-                      <select id="srv_riskImpact" required onchange="updateRiskBadge()" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs outline-none">
-                        <option value="1">ต่ำ — ผลกระทบอยู่ในวงจำกัด</option>
-                        <option value="2">ปานกลาง — เห็นได้ชัดต่อระบบ/บริการ</option>
-                        <option value="3">สูง — ผลกระทบรุนแรง เสียหายกว้าง</option>
+                      <label for="riskImpact" class="block font-bold text-slate-700 mb-1">
+                        โปรดประเมิน ผลกระทบ (Impact) <span class="text-rose-500">*</span>
+                      </label>
+                      <select id="riskImpact" name="riskImpact" required
+                              class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs outline-none">
+                        <option value="1">ต่ำ — ผลกระทบอยู่ในวงจำกัด กระทบต่อข้อมูล ระบบ เพียงเล็กน้อย</option>
+                        <option value="2">ปานกลาง — เกิดผลกระทบอย่างเห็นได้ชัดต่อระบบ การดำเนินงาน</option>
+                        <option value="3">สูง — เกิดผลกระทบอย่างมีนัยสำคัญ ข้อมูลเสียหายเป็นวงกว้าง</option>
                       </select>
                     </div>
                   </div>
@@ -202,77 +305,213 @@
                   </div>
                 </div>
 
-                <!-- CIA Table (auto-generated from vmRows) -->
+                <!-- ตาราง C-I-A & PDPA -->
                 <div class="overflow-x-auto rounded-lg border border-slate-200">
-                  <table class="w-full text-xs text-left border-collapse min-w-[600px]">
+                  <table class="w-full text-xs text-left border-collapse min-w-[650px]">
                     <thead>
                       <tr class="bg-[#122238] text-white text-xs">
                         <th rowspan="2" class="py-2.5 px-2 text-center w-24 border-r border-slate-700 text-[11px] font-bold text-slate-300">รายการ</th>
                         <th rowspan="2" class="py-2.5 px-3 text-center w-24 border-r border-slate-700 font-bold whitespace-nowrap">
-                          ข้อมูล PDPA <span class="help-badge" title="ข้อมูลส่วนบุคคลตาม พ.ร.บ.">?</span>
+                          ข้อมูล PDPA <span class="help-badge" title="มีข้อมูลส่วนบุคคลตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคลหรือไม่">?</span>
                         </th>
-                        <th colspan="3" class="py-2 px-3 text-center border-b border-slate-700 font-bold">ประเมินผลกระทบ (C-I-A)</th>
+                        <th colspan="3" class="py-2 px-3 text-center border-b border-slate-700 font-bold">
+                          ประเมินผลกระทบ (C-I-A)
+                        </th>
                         <th rowspan="2" class="py-2.5 px-3 text-center w-20 border-l border-slate-700 font-bold">ผลกระทบ</th>
                       </tr>
                       <tr class="bg-[#122238] text-white text-xs border-t border-slate-700">
-                        <th class="py-2 px-2 text-center border-r border-slate-700 min-w-[110px]"><div class="font-bold">Confidentiality (C)</div><div class="text-[10px] text-slate-300">(Data Leak)</div></th>
-                        <th class="py-2 px-2 text-center border-r border-slate-700 min-w-[110px]"><div class="font-bold">Integrity (I)</div><div class="text-[10px] text-slate-300">(Change Data)</div></th>
-                        <th class="py-2 px-2 text-center min-w-[110px]"><div class="font-bold">Availability (A)</div><div class="text-[10px] text-slate-300">(Downtime)</div></th>
+                        <th class="py-2 px-2 text-center border-r border-slate-700 min-w-[140px]">
+                          <div class="font-bold">Confidentiality (C)</div>
+                          <div class="text-[10px] text-slate-300 font-normal">(Data Leak)</div>
+                        </th>
+                        <th class="py-2 px-2 text-center border-r border-slate-700 min-w-[140px]">
+                          <div class="font-bold">Integrity (I)</div>
+                          <div class="text-[10px] text-slate-300 font-normal">(Change Data)</div>
+                        </th>
+                        <th class="py-2 px-2 text-center min-w-[140px]">
+                          <div class="font-bold">Availability (A)</div>
+                          <div class="text-[10px] text-slate-300 font-normal">(Downtime)</div>
+                        </th>
                       </tr>
                     </thead>
-                    <tbody id="ciaTableBody" class="divide-y divide-slate-100 bg-white"></tbody>
+                    <tbody id="assessmentTableBody" class="divide-y divide-slate-100 bg-white"></tbody>
                   </table>
                 </div>
 
                 <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">หมายเหตุ</label>
-                  <textarea id="srv_note" rows="2" maxlength="500" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"
+                  <label for="requestRemarks" class="block text-xs font-bold text-slate-700 mb-1">หมายเหตุ</label>
+                  <textarea id="requestRemarks" name="requestRemarks" rows="2" maxlength="500"
+                            placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"
                             class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none focus:ring-1 focus:ring-[#0f1d36]"></textarea>
                 </div>
               </div>
 
-              <div id="newServerError" class="hidden p-2.5 bg-red-100 text-red-600 text-xs rounded-lg border border-red-300"></div>
-
               <div class="flex items-center gap-3 pt-2">
-                <button type="submit" id="btnSubmitNewServer"
-                        class="px-6 py-2.5 bg-[#0f1d36] hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition flex items-center gap-2 shadow-xs">
-                  <i class="fa-solid fa-paper-plane text-sm"></i><span>ส่งคำขอ</span>
+                <button type="submit" id="btnSubmitForm" class="px-6 py-2.5 bg-[#0f1d36] hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition flex items-center gap-2 shadow-xs">
+                  <i class="fa-solid fa-paper-plane text-sm"></i>
+                  <span>ส่งคำขอใช้บริการ</span>
                 </button>
-                <button type="button" onclick="resetNewServerForm()"
-                        class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">
-                  ยกเลิก
+                <button type="button" onclick="window.print()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-1.5">
+                  <i class="fa-solid fa-print"></i>
+                  <span>พิมพ์เอกสาร</span>
                 </button>
               </div>
             </form>
           </div>
 
-          <!-- ===== Generic Dynamic Form (RESIZE_SERVER, FIREWALL, DOMAIN, VPN) ===== -->
-          <div id="formGeneric" class="hidden space-y-4">
-            <form id="genericTicketForm" onsubmit="submitGenericForm(event)" class="space-y-4">
-              <div id="dynamicFields" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+          <!-- FORM 2: ขอเปลี่ยนแปลงทรัพยากร Server -->
+          <div id="formResizeServer" class="hidden space-y-5">
+            <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
+              <i class="fa-solid fa-arrows-rotate text-teal-600"></i>
+              <h3 class="text-sm font-bold text-[#0f1d36]">ขอเปลี่ยนแปลงทรัพยากร Server</h3>
+            </div>
+
+            <form onsubmit="submitActiveTicket(event)" class="space-y-4">
               <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">หมายเหตุเพิ่มเติม (ถ้ามี)</label>
-                <textarea id="genericNote" maxlength="500" rows="2"
-                          class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-[#0f1d36] outline-none"></textarea>
+                <label for="resizeServerIp" class="block text-xs font-bold text-slate-700 mb-1">
+                  เลือก IP_Public ของ Server ที่มีอยู่แล้ว <span class="text-rose-500">*</span>
+                </label>
+                <select id="resizeServerIp" name="resizeServerIp" required onchange="handleResizeServerSelect(this.value)"
+                        class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-[#0f1d36] outline-none font-medium">
+                </select>
               </div>
-              <div id="genericFormError" class="hidden p-2.5 bg-red-100 text-red-600 text-xs rounded-lg border border-red-300"></div>
-              <div class="flex gap-3">
-                <button type="submit" id="btnSubmitGeneric"
-                        class="px-6 py-2.5 bg-[#0f1d36] hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition flex items-center gap-2 shadow-xs">
-                  <i class="fa-solid fa-paper-plane text-sm"></i><span>ส่งคำขอ</span>
-                </button>
-                <button type="button" onclick="resetTicketForm()"
-                        class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">
-                  ยกเลิก
-                </button>
+
+              <div id="resizeServerCurrentSpec" class="hidden bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs space-y-2">
+                <div class="flex justify-between items-center border-b border-slate-200/60 pb-1.5">
+                  <strong class="text-slate-800 font-bold flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-check text-emerald-600"></i> สเปกปัจจุบันของเซิร์ฟเวอร์
+                  </strong>
+                  <span id="currAssetId" class="font-mono text-[11px] bg-white px-2 py-0.5 rounded border border-slate-200 font-bold text-slate-600">-</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-slate-600 text-[11px]">
+                  <div><strong>ระบบงาน:</strong> <span id="currProject">-</span></div>
+                  <div><strong>ชื่อเครื่อง:</strong> <span id="currResource">-</span></div>
+                  <div><strong>OS:</strong> <span id="currOs">-</span></div>
+                  <div><strong>Private IP:</strong> <span id="currPrivateIp" class="font-mono">-</span></div>
+                </div>
               </div>
+
+              <div class="border border-slate-200 rounded-xl p-4 bg-white space-y-3">
+                <h4 class="text-xs font-bold text-slate-800">ระบุทรัพยากรใหม่ที่ต้องการเปลี่ยนแปลง</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">OS (ระบบปฏิบัติการ) <span class="text-rose-500">*</span></label>
+                    <input type="text" id="newOs" name="newOs" required class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs outline-none">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">vCPU (Core) <span class="text-rose-500">*</span></label>
+                    <input type="number" id="newVcpu" name="newVcpu" min="1" max="128" required class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs outline-none">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">RAM (GB) <span class="text-rose-500">*</span></label>
+                    <input type="number" id="newRam" name="newRam" min="1" max="512" required class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs outline-none">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Storage (GB) <span class="text-rose-500">*</span></label>
+                    <input type="number" id="newStorage" name="newStorage" min="10" max="10000" step="10" required class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs outline-none">
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">หมายเหตุเพิ่มเติม</label>
+                <textarea id="resizeNote" rows="2" maxlength="300" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none"></textarea>
+              </div>
+
+              <button type="submit" class="px-6 py-2.5 bg-[#0f1d36] hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition flex items-center gap-2 shadow-xs">
+                <i class="fa-solid fa-paper-plane text-sm"></i><span>ส่งคำขอ</span>
+              </button>
             </form>
           </div>
+
+          <!-- FORM 3: ขอเปลี่ยนแปลง Policy Firewall Server -->
+          <div id="formFirewall" class="hidden space-y-5">
+            <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
+              <i class="fa-solid fa-shield-halved text-teal-600"></i>
+              <h3 class="text-sm font-bold text-[#0f1d36]">ขอเปลี่ยนแปลง Policy Firewall Server</h3>
+            </div>
+
+            <form onsubmit="submitActiveTicket(event)" class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div class="sm:col-span-2">
+                  <label for="fwServerIp" class="block text-xs font-bold text-slate-700 mb-1">IP_Public (Destination Server) <span class="text-rose-500">*</span></label>
+                  <select id="fwServerIp" name="fwServerIp" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none"></select>
+                </div>
+                <div class="sm:col-span-2">
+                  <label for="fwSourceIp" class="block text-xs font-bold text-slate-700 mb-1">Source IP (ต้นทาง) <span class="text-rose-500">*</span></label>
+                  <input type="text" id="fwSourceIp" name="fwSourceIp" required value="0.0.0.0/0" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none">
+                </div>
+                <div class="sm:col-span-2">
+                  <label for="fwPort" class="block text-xs font-bold text-slate-700 mb-1">Port <span class="text-rose-500">*</span></label>
+                  <input type="text" id="fwPort" name="fwPort" required value="80, 443" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none">
+                </div>
+                <div class="sm:col-span-2">
+                  <label for="fwAction" class="block text-xs font-bold text-slate-700 mb-1">Action <span class="text-rose-500">*</span></label>
+                  <select id="fwAction" name="fwAction" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none">
+                    <option value="ALLOW (อนุญาต)">ALLOW (อนุญาต)</option>
+                    <option value="DENY (ปฏิเสธ/บล็อก)">DENY (ปฏิเสธ/บล็อก)</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" class="px-6 py-2.5 bg-[#0f1d36] hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition flex items-center gap-2 shadow-xs">
+                <i class="fa-solid fa-paper-plane text-sm"></i><span>ส่งคำขอ</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- FORM 4: ขอใช้บริการ Domain -->
+          <div id="formDomain" class="hidden space-y-5">
+            <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
+              <i class="fa-solid fa-globe text-teal-600"></i>
+              <h3 class="text-sm font-bold text-[#0f1d36]">ขอใช้บริการ Domain</h3>
+            </div>
+            <form onsubmit="submitActiveTicket(event)" class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label for="domainServerIp" class="block text-xs font-bold text-slate-700 mb-1">IP_Public Server <span class="text-rose-500">*</span></label>
+                  <select id="domainServerIp" name="domainServerIp" required onchange="handleDomainServerSelect(this.value)" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none"></select>
+                </div>
+                <div>
+                  <label for="domainResourceName" class="block text-xs font-bold text-slate-700 mb-1">Resource Name <span class="text-rose-500">*</span></label>
+                  <input type="text" id="domainResourceName" name="domainResourceName" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none">
+                </div>
+                <div>
+                  <label for="domainName" class="block text-xs font-bold text-slate-700 mb-1">Domain Name ที่ขอ <span class="text-rose-500">*</span></label>
+                  <input type="text" id="domainName" name="domainName" required placeholder="เช่น his.dms.go.th" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none">
+                </div>
+              </div>
+              <button type="submit" class="px-6 py-2.5 bg-[#0f1d36] hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition flex items-center gap-2 shadow-xs">
+                <i class="fa-solid fa-paper-plane text-sm"></i><span>ส่งคำขอ</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- FORM 5: ขอใช้บริการ VPN -->
+          <div id="formVpn" class="hidden space-y-5">
+            <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
+              <i class="fa-solid fa-network-wired text-teal-600"></i>
+              <h3 class="text-sm font-bold text-[#0f1d36]">ขอใช้บริการ VPN</h3>
+            </div>
+            <form onsubmit="submitActiveTicket(event)" class="space-y-4">
+              <div>
+                <label for="vpnServerIp" class="block text-xs font-bold text-slate-700 mb-1">IP_Public Access <span class="text-rose-500">*</span></label>
+                <select id="vpnServerIp" name="vpnServerIp" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none"></select>
+              </div>
+              <div>
+                <label for="vpnReason" class="block text-xs font-bold text-slate-700 mb-1">เหตุผลความจำเป็น <span class="text-rose-500">*</span></label>
+                <textarea id="vpnReason" name="vpnReason" rows="3" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none"></textarea>
+              </div>
+              <button type="submit" class="px-6 py-2.5 bg-[#0f1d36] hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition flex items-center gap-2 shadow-xs">
+                <i class="fa-solid fa-paper-plane text-sm"></i><span>ส่งคำขอ</span>
+              </button>
+            </form>
+          </div>
+
         </div>
       </div>
     </div>
 
-    <!-- ============ TAB: MY TICKETS ============ -->
+    <!-- TAB 2: คำขอของฉัน -->
     <div id="tabMine" class="hidden space-y-4">
       <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
         <div class="flex items-center justify-between pb-2 border-b border-slate-100">
@@ -280,7 +519,7 @@
             <i class="fa-solid fa-list-check text-blue-600"></i>
             <h2 class="text-sm sm:text-base font-bold text-slate-800">คำขอของฉัน</h2>
           </div>
-          <button type="button" onclick="loadMyTickets()" class="text-xs text-blue-600 hover:underline flex items-center gap-1 font-semibold">
+          <button type="button" onclick="loadTicketsFromBackend()" class="text-xs text-blue-600 hover:underline flex items-center gap-1 font-semibold">
             <i class="fa-solid fa-arrows-rotate"></i> รีเฟรช
           </button>
         </div>
@@ -290,59 +529,47 @@
             <thead>
               <tr class="bg-[#0f1d36] text-white uppercase tracking-wider text-[11px]">
                 <th class="py-3 px-3 w-28">เลขที่คำขอ</th>
-                <th class="py-3 px-3">ประเภท</th>
+                <th class="py-3 px-3">ประเภท & รายละเอียด</th>
                 <th class="py-3 px-3 w-24">สถานะ</th>
                 <th class="py-3 px-3 w-32">วันที่ยื่น</th>
                 <th class="py-3 px-3 w-36">ไฟล์แนบ</th>
-                <th class="py-3 px-3 text-center w-24">รายละเอียด</th>
+                <th class="py-3 px-3 text-center w-28">จัดการ</th>
               </tr>
             </thead>
             <tbody id="myTicketsBody" class="divide-y divide-slate-100 bg-white">
-              <tr><td colspan="6" class="py-8 text-center text-slate-400">กำลังโหลด...</td></tr>
+              <tr><td colspan="6" class="py-8 text-center text-slate-400">กำลังโหลดคำขอ...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- ============ TAB: ADMIN ============ -->
+    <!-- TAB 3: จัดการคำขอ Admin -->
     <div id="tabAdmin" class="hidden space-y-4">
       <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
-        <!-- Summary Cards -->
-        <div id="adminSummaryCards" class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-2"></div>
-
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-2 border-b border-slate-100">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
           <div class="flex items-center gap-2">
             <i class="fa-solid fa-user-shield text-rose-600"></i>
-            <h2 class="text-sm sm:text-base font-bold text-slate-800">จัดการคำขอทั้งหมด</h2>
+            <h2 class="text-sm sm:text-base font-bold text-slate-800">จัดการคำขอทั้งหมด (Admin)</h2>
           </div>
-          <div class="flex gap-2 flex-wrap">
-            <select id="filterStatus" onchange="renderAdminTable()" class="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded-lg outline-none">
-              <option value="">ทุกสถานะ</option>
-            </select>
-            <select id="filterType" onchange="renderAdminTable()" class="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded-lg outline-none">
-              <option value="">ทุกประเภท</option>
-            </select>
-            <button onclick="loadAllTicketsForAdmin()" class="px-3 py-1.5 text-xs font-bold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 flex items-center gap-1">
-              <i class="fa-solid fa-arrows-rotate"></i> รีเฟรช
-            </button>
-          </div>
+          <button type="button" onclick="loadAdminTicketsFromBackend()" class="text-xs text-rose-600 hover:underline flex items-center gap-1 font-semibold">
+            <i class="fa-solid fa-arrows-rotate"></i> รีเฟรช
+          </button>
         </div>
 
         <div class="overflow-x-auto rounded-lg border border-slate-200">
           <table class="w-full text-xs text-left border-collapse">
             <thead>
-              <tr class="bg-[#0f1d36] text-white uppercase tracking-wider text-[11px]">
+              <tr class="bg-rose-700 text-white uppercase tracking-wider text-[11px]">
                 <th class="py-3 px-3 w-28">เลขที่คำขอ</th>
                 <th class="py-3 px-3">หน่วยงาน / ผู้ยื่น</th>
                 <th class="py-3 px-3">ประเภท</th>
                 <th class="py-3 px-3 w-28">สถานะ</th>
-                <th class="py-3 px-3 w-32">วันที่ยื่น</th>
-                <th class="py-3 px-3 text-center w-28">จัดการ</th>
+                <th class="py-3 px-3 text-center w-28">อนุมัติ</th>
               </tr>
             </thead>
             <tbody id="adminTicketsBody" class="divide-y divide-slate-100 bg-white">
-              <tr><td colspan="6" class="py-8 text-center text-slate-400">กำลังโหลด...</td></tr>
+              <tr><td colspan="5" class="py-8 text-center text-slate-400">กำลังโหลดรายการ Admin...</td></tr>
             </tbody>
           </table>
         </div>
@@ -351,38 +578,44 @@
 
   </main>
 
-  <!-- ============ MODAL: Success ============ -->
-  <div id="successModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  <!-- MODAL: สำเร็จ -->
+  <div id="downloadSuccessModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-2xs flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
       <div class="bg-[#0f1d36] px-6 py-4 flex items-center justify-between text-white">
         <h3 class="text-sm font-bold flex items-center gap-2">
-          <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i> ส่งคำขอสำเร็จ
+          <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i> ส่งคำขอใช้งานสำเร็จ
         </h3>
         <button onclick="closeSuccessModal()" class="text-slate-300 hover:text-white text-lg font-bold">&times;</button>
       </div>
-      <div class="p-6 space-y-4 text-xs text-slate-700">
-        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
-          <p class="text-xs text-emerald-800 font-medium">บันทึกคำขอในระบบเรียบร้อยแล้ว</p>
-          <div class="font-mono text-xl font-bold text-slate-900 mt-1" id="modalSuccessTicketId">TK-000001</div>
+      <div class="p-6 space-y-4 text-xs sm:text-sm text-slate-700">
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-center">
+          <p class="text-xs text-emerald-800 font-medium">บันทึกข้อมูลคำขอลงในระบบเรียบร้อยแล้ว</p>
+          <div class="font-mono text-base font-bold text-slate-900 mt-1" id="modalSuccessTicketId">TK-000001</div>
         </div>
         <div class="text-xs text-slate-600 space-y-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-          <strong class="text-slate-800 block">ขั้นตอนถัดไป:</strong>
+          <strong class="text-slate-800 block flex items-center gap-1.5 font-bold">
+            <i class="fa-solid fa-circle-info text-blue-600"></i> ขั้นตอนถัดไป:
+          </strong>
           <p class="leading-relaxed">
-            เจ้าหน้าที่จะตรวจสอบคำขอของท่าน หากต้องการแนบเอกสารประกอบ กรุณาไปที่แท็บ <strong>"คำขอของฉัน"</strong> แล้วกดปุ่มแนบไฟล์
+            1. พิมพ์แบบฟอร์มเอกสารทางราชการ<br>
+            2. เสนอผู้บังคับบัญชาลงนาม<br>
+            3. นำมาแนบไฟล์ในเมนู <strong>"คำขอของฉัน"</strong> เพื่อให้แอดมินเริ่มอนุมัติระบบ
           </p>
         </div>
       </div>
-      <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-end">
-        <button onclick="closeSuccessModal(); switchMainTab('mine')"
-                class="px-5 py-2 bg-[#0f1d36] hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition">
-          ไปที่คำขอของฉัน
+      <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-between gap-2">
+        <button onclick="window.print()" class="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg">
+          <i class="fa-solid fa-print mr-1"></i> พิมพ์เอกสาร
+        </button>
+        <button onclick="closeSuccessModal()" class="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg">
+          ปิดหน้าต่าง
         </button>
       </div>
     </div>
   </div>
 
-  <!-- ============ MODAL: Attach File ============ -->
-  <div id="attachModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  <!-- MODAL: แนบไฟล์เอกสาร -->
+  <div id="attachModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-2xs flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
       <div class="bg-[#0f1d36] px-6 py-4 flex items-center justify-between text-white">
         <h3 class="text-sm font-bold flex items-center gap-2">
@@ -390,884 +623,621 @@
         </h3>
         <button onclick="closeAttachModal()" class="text-slate-300 hover:text-white text-lg font-bold">&times;</button>
       </div>
-      <div class="p-6 space-y-4 text-xs">
+      <form onsubmit="uploadFileAttachment(event)" class="p-6 space-y-4 text-xs sm:text-sm">
         <div>
           <p class="text-xs text-slate-500 mb-1">เลขที่คำขอ:</p>
-          <div class="font-mono text-sm font-bold text-slate-900 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200" id="attachModalTicketId"></div>
+          <div class="font-mono text-sm font-bold text-slate-900 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200" id="attachModalTicketId">TK-000001</div>
         </div>
+
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5">
-            เลือกไฟล์เอกสาร <span class="text-rose-500">*</span>
+          <label for="attachFileInput" class="block text-xs font-bold text-slate-700 mb-1.5">
+            เลือกไฟล์เอกสารแนบ <span class="text-rose-500">*</span>
           </label>
           <input type="file" id="attachFileInput" required accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xlsx"
-                 class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border border-slate-300 rounded-lg p-1.5">
+                 class="w-full text-xs text-slate-500 border border-slate-300 rounded-lg p-1.5">
           <p class="text-[10px] text-slate-400 mt-1">รองรับ PDF, JPG, PNG, DOCX, XLSX (สูงสุด 32 MB)</p>
         </div>
-        <div id="attachProgress" class="hidden">
-          <div class="flex items-center gap-2 text-xs text-slate-600">
-            <i class="fa-solid fa-circle-notch fa-spin text-blue-600"></i>
-            <span id="attachProgressText">กำลังอัปโหลด...</span>
-          </div>
-        </div>
-        <div id="attachError" class="hidden p-2.5 bg-red-100 text-red-600 text-xs rounded-lg border border-red-300"></div>
+
         <div class="flex items-center gap-2 pt-2">
-          <button type="button" id="btnSubmitAttach" onclick="uploadFileAttachment()"
-                  class="flex-1 py-2.5 bg-[#0f1d36] hover:bg-slate-800 text-white font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5">
-            <i class="fa-solid fa-upload"></i><span>ยืนยันแนบไฟล์</span>
+          <button type="submit" id="btnSubmitAttach" class="flex-1 py-2.5 bg-[#0f1d36] text-white font-bold rounded-lg text-xs">
+            <i class="fa-solid fa-upload mr-1"></i> ยืนยันแนบไฟล์
           </button>
-          <button type="button" onclick="closeAttachModal()"
-                  class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition">
+          <button type="button" onclick="closeAttachModal()" class="px-4 py-2.5 bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg">
             ยกเลิก
           </button>
         </div>
-      </div>
+      </form>
     </div>
   </div>
 
-  <!-- ============ MODAL: Ticket Detail / Admin Action ============ -->
-  <div id="ticketModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 max-h-[90vh] flex flex-col">
-      <div class="bg-slate-800 px-6 py-4 flex items-center justify-between shrink-0 text-white">
-        <h3 id="modalTicketTitle" class="text-sm font-bold"></h3>
-        <button onclick="closeTicketModal()" class="text-slate-400 hover:text-white text-xl leading-none font-bold">&times;</button>
-      </div>
-      <div id="modalTicketBody" class="p-6 text-sm text-slate-700 space-y-3 overflow-y-auto flex-1"></div>
-      <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-end shrink-0">
-        <button onclick="closeTicketModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition">ปิด</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============ MODAL: Logout ============ -->
-  <div id="logoutModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200">
-      <div class="bg-rose-600 px-6 py-4 flex items-center justify-between">
-        <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="fa-solid fa-right-from-bracket"></i> ยืนยันออกจากระบบ</h3>
-        <button onclick="closeLogoutModal()" class="text-rose-200 hover:text-white text-xl leading-none font-bold">&times;</button>
-      </div>
-      <div class="p-6 text-sm text-slate-600 text-center">คุณต้องการออกจากระบบใช่หรือไม่?</div>
-      <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-end gap-2">
-        <button onclick="closeLogoutModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg">ยกเลิก</button>
-        <button onclick="doLogout()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg">
-          <i class="fa-solid fa-right-from-bracket mr-1"></i>ออกจากระบบ
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================================================ -->
-  <!-- APPLICATION SCRIPT -->
-  <!-- ============================================================ -->
+  <!-- APPLICATION SCRIPT INTEGRATION -->
   <script>
-    // ──────────────────────────────────────────────────────────────
-    // CONFIG
-    // ──────────────────────────────────────────────────────────────
+    // 🔴 BACKEND WEB APP URL (Google Apps Script)
     const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwxRHjkBBTSTeAlbE14eDzPpdBBT2OnJCJW0YgcHLGXeqkxoNtRLosafoDygxi5tOQU/exec";
 
-    let userAgency = "", userEmail = "", userName = "", isAdmin = false;
-    let sessionTimerId = null;
-    let ticketTypes = [];
-    let serverList = [];      // [{id,ip,project,resource,...}]
-    let selectedType = null;
+    // Application Global State
+    let userAgency = "";
+    let userEmail = "";
+    let userName = "";
+    let isAdmin = false;
+    let existingServers = [];
     let myTickets = [];
-    let allTickets = [];
-    let vmRowCount = 0;
-    const MAX_VM_ROWS = 5;
+    let activeTicketType = "NEW_SERVER";
+    let vmRowIdCounter = 0;
     let attachingTicketId = null;
 
-    const STATUS_COLOR = {
-      "รอดำเนินการ":   "bg-amber-100 text-amber-800 border-amber-200",
-      "กำลังดำเนินการ": "bg-sky-100 text-sky-800 border-sky-200",
-      "อนุมัติ":        "bg-emerald-100 text-emerald-800 border-emerald-200",
-      "ปฏิเสธ":         "bg-rose-100 text-rose-800 border-rose-200",
-      "เสร็จสิ้น":       "bg-slate-200 text-slate-700 border-slate-300"
-    };
-    const TYPE_ICON = {
-      NEW_SERVER: "fa-server", RESIZE_SERVER: "fa-arrows-rotate",
-      FIREWALL: "fa-shield-halved", DOMAIN: "fa-globe", VPN: "fa-network-wired"
-    };
+    const MAX_VM_ROWS = 5;
+    const OS_OPTIONS = [
+      { value: "AlmaLinux 8.10", label: "AlmaLinux 8.10" },
+      { value: "Debian 12.5", label: "Debian 12.5" },
+      { value: "Rocky Linux 9.5", label: "Rocky Linux 9.5" },
+      { value: "Ubuntu 20.04 LTS", label: "Ubuntu 20.04 LTS" },
+      { value: "Ubuntu 22.04 LTS", label: "Ubuntu 22.04 LTS" },
+      { value: "Ubuntu 24.04 LTS", label: "Ubuntu 24.04 LTS" },
+      { value: "Windows Server 2022", label: "Windows Server 2022" },
+      { value: "Windows Server 2025", label: "Windows Server 2025" },
+      { value: "Other", label: "Other (ระบุอื่นๆ)" }
+    ];
 
-    // ──────────────────────────────────────────────────────────────
-    // HELPERS
-    // ──────────────────────────────────────────────────────────────
-    function getToken() { return sessionStorage.getItem('access_token') || ""; }
+    const SYSTEM_TYPE_OPTIONS = [
+      { value: "ระบบบริการ (Web Services)", label: "ระบบบริการ (Web Services)" },
+      { value: "ระบบฐานข้อมูล (Database)", label: "ระบบฐานข้อมูล (Database)" },
+      { value: "ระบบแฟ้มข้อมูล (File Server)", label: "ระบบแฟ้มข้อมูล (File Server)" },
+      { value: "อื่นๆ", label: "อื่นๆ" }
+    ];
 
-    function escapeHtml(v) {
-      return String(v === null || v === undefined ? '' : v)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
+    const NETWORK_OPTIONS = [
+      { value: "Private", label: "Private (ภายใน)" },
+      { value: "Public", label: "Public (สาธารณะ)" },
+      { value: "Both", label: "Both (Private + Public)" }
+    ];
 
-    function forceLogin(msg) {
-      sessionStorage.clear();
-      if (msg) alert(msg);
-      window.location.href = "auth.html";
-    }
-
-    function fmtDate(iso) {
-      if (!iso) return '-';
-      const d = new Date(iso);
-      return d.toLocaleDateString('th-TH', { year:'numeric', month:'short', day:'numeric' }) +
-        ' ' + d.toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
-    }
-
-    function statusBadge(status) {
-      const cls = STATUS_COLOR[status] || "bg-slate-100 text-slate-700 border-slate-200";
-      return `<span class="px-2 py-0.5 rounded text-[10px] font-bold border ${cls}">${escapeHtml(status)}</span>`;
-    }
-
-    function showToast(msg, type = "success") {
-      const colors = { success:"bg-emerald-600", error:"bg-rose-600", info:"bg-sky-600", warning:"bg-amber-500" };
-      const icons = { success:"fa-circle-check", error:"fa-circle-xmark", info:"fa-circle-info", warning:"fa-triangle-exclamation" };
-      const toast = document.createElement('div');
-      toast.className = `pointer-events-auto flex items-start gap-3 ${colors[type]||colors.info} text-white text-xs font-medium px-4 py-3 rounded-xl shadow-xl opacity-0 transition-opacity duration-300`;
-      toast.innerHTML = `<i class="fa-solid ${icons[type]||icons.info} mt-0.5 shrink-0"></i><span>${escapeHtml(msg)}</span>`;
-      document.getElementById('toastContainer').appendChild(toast);
-      requestAnimationFrame(() => { toast.style.opacity='1'; });
-      setTimeout(() => { toast.style.opacity='0'; setTimeout(() => toast.remove(), 300); }, 4000);
-    }
-
+    // Helper: Call Backend API with HMAC Token
     async function callBackend(action, payload = {}) {
       try {
-        payload.token = getToken();
+        const token = sessionStorage.getItem('access_token') || "";
+        payload.token = token;
+        
         const res = await fetch(BACKEND_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action, payload })
         });
         const data = await res.json();
-        if (!data.success) {
-          if (data.code === 'UNAUTHENTICATED') { forceLogin("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่"); return { success: false }; }
-          return { success: false, message: data.message || "เกิดข้อผิดพลาด" };
+        if (!data.success && data.code === 'UNAUTHENTICATED') {
+          alert("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
+          sessionStorage.clear();
+          window.location.href = "auth.html";
+          return { success: false };
         }
-        return data.data || { success: true };
+        return data;
       } catch (err) {
-        return { success: false, networkError: true, message: "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้" };
+        console.error("Backend Call Error:", err);
+        return { success: false, message: "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้" };
       }
     }
 
-    async function callWithRetry(action, payload = {}, retries = 2) {
-      for (let i = 0; i <= retries; i++) {
-        const res = await callBackend(action, payload);
-        if (res.success || !res.networkError) return res;
-        if (i < retries) await new Promise(r => setTimeout(r, 800));
-      }
-      return { success: false, networkError: true, message: "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้" };
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    // BOOTSTRAP
-    // ──────────────────────────────────────────────────────────────
+    // App Initialization
     document.addEventListener("DOMContentLoaded", async () => {
-      const exp = parseInt(sessionStorage.getItem('token_exp') || "0", 10);
-      if (!getToken() || exp <= Date.now()) { forceLogin(); return; }
+      userAgency = sessionStorage.getItem('mfa_agency');
+      userEmail = sessionStorage.getItem('mfa_email');
+      userName = sessionStorage.getItem('mfa_name');
 
-      setLoadingMsg("กำลังตรวจสอบ session...");
-      const me = await callWithRetry("whoAmI");
-      if (!me.success) {
-        if (me.networkError) {
-          document.getElementById('loadingOverlay').innerHTML =
-            '<i class="fa-solid fa-triangle-exclamation text-4xl text-amber-500 mb-4"></i>' +
-            '<h2 class="text-lg font-bold text-slate-800 mb-2">เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ</h2>' +
-            '<button onclick="location.reload()" class="px-5 py-2 bg-[#0f1d36] text-white text-sm font-bold rounded-lg mt-2">โหลดหน้านี้ใหม่</button>';
-          return;
-        }
-        forceLogin(me.message || "เซสชันไม่ถูกต้อง");
+      if (!userAgency || !userEmail) {
+        window.location.href = "auth.html";
         return;
       }
 
-      userAgency = me.user.agency || "";
-      userEmail = me.user.email || "";
-      userName = me.user.fullname || "";
-      isAdmin = !!me.user.isAdmin;
-
-      document.getElementById('profileName').textContent = userName;
-      document.getElementById('displayAgency').textContent = userAgency + (isAdmin ? " (ผู้ดูแล)" : "");
+      isAdmin = userAgency.includes("สำนักดิจิทัลการแพทย์");
+      document.getElementById('profileName').textContent = userName || "ผู้ใช้งาน";
+      document.getElementById('displayAgency').textContent = userAgency + (isAdmin ? " (Admin)" : "");
       if (isAdmin) document.getElementById('tabBtnAdmin').classList.remove('hidden');
 
-      startSessionWatch(exp);
+      initLiveClock();
+      initFormNewServer();
+      
+      // ดึงสเปกเซิร์ฟเวอร์ที่มีอยู่จาก Backend เพื่อเติมใส่ Dropdown
+      await loadServerDropdowns();
+      selectTicketType("NEW_SERVER");
+      
+      // ดึงตารางประวัติ Ticket จาก Backend
+      await loadTicketsFromBackend();
 
-      setLoadingMsg("กำลังโหลดประเภทคำขอ...");
-      const typesRes = await callWithRetry("getTicketTypes");
-      if (typesRes.success) {
-        ticketTypes = typesRes.types || [];
-        serverList = typesRes.servers || [];
-        renderTypeCards();
-      }
-
-      setLoadingMsg("กำลังโหลดคำขอของฉัน...");
-      await loadMyTickets();
-
-      document.getElementById('loadingOverlay').style.opacity = '0';
-      setTimeout(() => document.getElementById('loadingOverlay').classList.add('hidden'), 300);
+      document.getElementById('loadingOverlay').classList.add('hidden');
     });
 
-    function setLoadingMsg(msg) {
-      const el = document.getElementById('loadingMsg');
-      if (el) el.textContent = msg;
+    function initLiveClock() {
+      const clockEl = document.getElementById("sessionTimer");
+      if (!clockEl) return;
+      const update = () => {
+        const d = new Date();
+        clockEl.textContent = String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0');
+      };
+      update();
+      setInterval(update, 30000);
     }
 
-    function startSessionWatch(exp) {
-      clearInterval(sessionTimerId);
-      sessionTimerId = setInterval(() => {
-        const left = exp - Date.now();
-        if (left <= 0) { clearInterval(sessionTimerId); forceLogin("เซสชันหมดอายุ"); return; }
-        const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
-        document.getElementById('sessionTimer').textContent =
-          String(m).padStart(2,'0') + ":" + String(s).padStart(2,'0');
-      }, 1000);
-    }
-
-    async function doLogout() {
-      try { await callBackend("logout"); } catch(e) {}
-      sessionStorage.clear();
-      window.location.href = "auth.html";
-    }
-    function openLogoutModal() { document.getElementById('logoutModal').classList.remove('hidden'); }
-    function closeLogoutModal() { document.getElementById('logoutModal').classList.add('hidden'); }
-
-    // ──────────────────────────────────────────────────────────────
-    // TABS
-    // ──────────────────────────────────────────────────────────────
-    function switchMainTab(name) {
-      ['New','Mine','Admin'].forEach(t => document.getElementById('tab'+t).classList.add('hidden'));
-      ['tabBtnNew','tabBtnMine','tabBtnAdmin'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.classList.remove('tab-active','bg-[#0f1d36]','text-white');
-        el.classList.add('bg-white','text-slate-600','border','border-slate-200');
-      });
-      document.getElementById('tab' + name.charAt(0).toUpperCase() + name.slice(1)).classList.remove('hidden');
-      const btn = document.getElementById('tabBtn' + name.charAt(0).toUpperCase() + name.slice(1));
-      if (btn) {
-        btn.classList.add('tab-active');
-        btn.classList.remove('bg-white','text-slate-600','border','border-slate-200');
-      }
-      if (name === 'mine') renderMyTicketsTable();
-      if (name === 'admin' && isAdmin) loadAllTicketsForAdmin();
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    // TYPE CARDS
-    // ──────────────────────────────────────────────────────────────
-    function renderTypeCards() {
-      const grid = document.getElementById('typeCardGrid');
-      grid.innerHTML = '';
-      ticketTypes.forEach(t => {
-        const icon = TYPE_ICON[t.key] || t.icon || 'fa-file-lines';
-        const card = document.createElement('button');
-        card.type = 'button';
-        card.className = 'type-card text-left p-4 rounded-xl border border-slate-200 hover:border-slate-400 bg-white cursor-pointer shadow-2xs transition';
-        card.dataset.type = t.key;
-        card.innerHTML = `<i class="fa-solid ${icon} text-xl text-[#0f1d36] mb-2"></i><p class="text-xs sm:text-sm font-bold text-slate-800">${escapeHtml(t.label)}</p>`;
-        card.onclick = () => selectTicketType(t.key);
-        grid.appendChild(card);
-      });
-    }
-
-    function selectTicketType(key) {
-      selectedType = key;
-      document.querySelectorAll('.type-card').forEach(c =>
-        c.classList.toggle('selected', c.dataset.type === key));
-
-      const typeConfig = ticketTypes.find(t => t.key === key);
-      if (!typeConfig) return;
-
-      const icon = TYPE_ICON[key] || 'fa-file';
-      document.getElementById('selectedTypeIcon').className = `fa-solid ${icon} text-teal-600`;
-      document.getElementById('selectedTypeLabel').textContent = typeConfig.label;
-      document.getElementById('ticketFormWrap').classList.remove('hidden');
-
-      // scroll to form
-      document.getElementById('ticketFormWrap').scrollIntoView({ behavior:'smooth', block:'nearest' });
-
-      document.getElementById('formNewServer').classList.add('hidden');
-      document.getElementById('formGeneric').classList.add('hidden');
-
-      if (key === 'NEW_SERVER') {
-        document.getElementById('formNewServer').classList.remove('hidden');
-        initNewServerForm();
-      } else {
-        document.getElementById('formGeneric').classList.remove('hidden');
-        renderGenericFields(typeConfig);
-      }
-    }
-
-    function resetTicketForm() {
-      selectedType = null;
-      document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
-      document.getElementById('ticketFormWrap').classList.add('hidden');
-      document.getElementById('formNewServer').classList.add('hidden');
-      document.getElementById('formGeneric').classList.add('hidden');
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    // GENERIC FORM (RESIZE_SERVER, FIREWALL, DOMAIN, VPN)
-    // ──────────────────────────────────────────────────────────────
-    function renderGenericFields(typeConfig) {
-      const wrap = document.getElementById('dynamicFields');
-      wrap.innerHTML = '';
-      document.getElementById('genericNote').value = '';
-      document.getElementById('genericFormError').classList.add('hidden');
-
-      typeConfig.fields.forEach(f => {
-        const div = document.createElement('div');
-        if (f.type === 'textarea') div.className = 'sm:col-span-2';
-
-        const label = document.createElement('label');
-        label.className = 'block text-xs font-bold text-slate-700 mb-1';
-        label.innerHTML = escapeHtml(f.label) + (f.required ? ' <span class="text-rose-500">*</span>' : '');
-        div.appendChild(label);
-
-        let input;
-        if (f.type === 'server_select') {
-          input = document.createElement('select');
-          input.className = 'w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none focus:ring-1 focus:ring-[#0f1d36]';
-          const blank = document.createElement('option');
-          blank.value = ''; blank.textContent = '-- เลือก IP_Public --'; blank.disabled = true; blank.selected = true;
-          input.appendChild(blank);
-          serverList.forEach(s => {
-            const o = document.createElement('option');
-            o.value = s.ip;
-            o.textContent = s.ip + (s.project ? ' (' + s.project + ')' : '');
-            input.appendChild(o);
-          });
-        } else if (f.type === 'select') {
-          input = document.createElement('select');
-          input.className = 'w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none focus:ring-1 focus:ring-[#0f1d36]';
-          const blank = document.createElement('option'); blank.value=''; blank.textContent='-- เลือก --'; blank.disabled=true; blank.selected=true;
-          input.appendChild(blank);
-          (f.options || []).forEach(opt => {
-            const o = document.createElement('option'); o.value = opt; o.textContent = opt;
-            input.appendChild(o);
-          });
-        } else if (f.type === 'textarea') {
-          input = document.createElement('textarea');
-          input.rows = 3;
-          input.className = 'w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none focus:ring-1 focus:ring-[#0f1d36]';
-        } else {
-          input = document.createElement('input');
-          input.type = f.type === 'number' ? 'number' : 'text';
-          input.className = 'w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none focus:ring-1 focus:ring-[#0f1d36]';
+    function switchMainTab(tabName) {
+      ['new', 'mine', 'admin'].forEach(t => {
+        const el = document.getElementById('tab' + capitalize(t));
+        const btn = document.getElementById('tabBtn' + capitalize(t));
+        if (el) el.classList.add('hidden');
+        if (btn) {
+          btn.classList.remove('bg-[#0f1d36]', 'text-white', 'bg-rose-700');
+          btn.classList.add('bg-white', 'text-slate-600');
         }
-        input.dataset.fieldKey = f.key;
-        input.maxLength = 500;
-        if (f.required) input.required = true;
-        div.appendChild(input);
-        wrap.appendChild(div);
       });
+
+      const activeEl = document.getElementById('tab' + capitalize(tabName));
+      const activeBtn = document.getElementById('tabBtn' + capitalize(tabName));
+      
+      if (activeEl) activeEl.classList.remove('hidden');
+      if (activeBtn) {
+        activeBtn.classList.remove('bg-white', 'text-slate-600');
+        activeBtn.classList.add(tabName === 'admin' ? 'bg-rose-700' : 'bg-[#0f1d36]', 'text-white');
+      }
+
+      if (tabName === 'mine') loadTicketsFromBackend();
+      if (tabName === 'admin' && isAdmin) loadAdminTicketsFromBackend();
     }
 
-    async function submitGenericForm(e) {
-      e.preventDefault();
-      if (!selectedType) return;
-      const err = document.getElementById('genericFormError');
-      err.classList.add('hidden');
+    function capitalize(s) {
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
 
-      const details = {};
-      document.querySelectorAll('#dynamicFields [data-field-key]').forEach(el => {
-        details[el.dataset.fieldKey] = el.value.trim();
+    function selectTicketType(typeKey) {
+      activeTicketType = typeKey;
+      document.querySelectorAll(".type-card").forEach(c => {
+        if (c.dataset.type === typeKey) {
+          c.classList.add("selected", "border-[#0f1d36]", "bg-blue-50/50");
+        } else {
+          c.classList.remove("selected", "border-[#0f1d36]", "bg-blue-50/50");
+        }
       });
-      const note = document.getElementById('genericNote').value.trim();
 
-      const btn = document.getElementById('btnSubmitGeneric');
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> กำลังส่ง...';
+      ["formNewServer", "formResizeServer", "formFirewall", "formDomain", "formVpn"].forEach(id => {
+        document.getElementById(id)?.classList.add("hidden");
+      });
 
-      const res = await callBackend("createTicket", { type: selectedType, details, note });
+      const map = {
+        "NEW_SERVER": "formNewServer",
+        "RESIZE_SERVER": "formResizeServer",
+        "FIREWALL": "formFirewall",
+        "DOMAIN": "formDomain",
+        "VPN": "formVpn"
+      };
+      document.getElementById(map[typeKey])?.classList.remove("hidden");
+    }
 
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-paper-plane text-sm"></i><span>ส่งคำขอ</span>';
-
-      if (res.success) {
-        document.getElementById('modalSuccessTicketId').textContent = res.ticketId;
-        document.getElementById('successModal').classList.remove('hidden');
-        resetTicketForm();
-        await loadMyTickets();
-      } else {
-        err.textContent = res.message || "เกิดข้อผิดพลาด";
-        err.classList.remove('hidden');
+    // ดึงเซิร์ฟเวอร์เดิมจาก risk_cloud สำหรับ Dropdown
+    async function loadServerDropdowns() {
+      const res = await callBackend("getTicketTypes");
+      if (res && res.success && res.data) {
+        existingServers = res.data.servers || [];
+        populateExistingServerDropdowns();
       }
     }
 
-    // ──────────────────────────────────────────────────────────────
-    // NEW SERVER FORM — VM TABLE
-    // ──────────────────────────────────────────────────────────────
-    function initNewServerForm() {
-      vmRowCount = 0;
-      document.getElementById('vmTableBody').innerHTML = '';
-      document.getElementById('ciaTableBody').innerHTML = '';
-      document.getElementById('srv_note').value = '';
-      document.getElementById('newServerError').classList.add('hidden');
-      updateRiskBadge();
+    function populateExistingServerDropdowns() {
+      const serverOptions = existingServers.map(s => 
+        `<option value="${s.ip}">${s.ip} — ${s.resource} (${s.project})</option>`
+      ).join("");
+
+      ["resizeServerIp", "fwServerIp", "domainServerIp", "vpnServerIp"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.innerHTML = `<option value="" disabled selected>-- เลือก IP_Public Server --</option>` + serverOptions;
+        }
+      });
+    }
+
+    function handleResizeServerSelect(ip) {
+      const server = existingServers.find(s => s.ip === ip);
+      const card = document.getElementById("resizeServerCurrentSpec");
+      if (!server || !card) return;
+
+      card.classList.remove("hidden");
+      document.getElementById("currAssetId").textContent = server.id || "-";
+      document.getElementById("currProject").textContent = server.project || "-";
+      document.getElementById("currResource").textContent = server.resource || "-";
+      document.getElementById("currOs").textContent = server.os || "-";
+      document.getElementById("currPrivateIp").textContent = server.privateIp || "-";
+
+      if (server.os) document.getElementById("newOs").value = server.os;
+      if (server.vcpu) document.getElementById("newVcpu").value = server.vcpu;
+      if (server.ram) document.getElementById("newRam").value = server.ram;
+      if (server.storage) document.getElementById("newStorage").value = server.storage;
+    }
+
+    function handleDomainServerSelect(ip) {
+      const server = existingServers.find(s => s.ip === ip);
+      const resNameInp = document.getElementById("domainResourceName");
+      if (server && resNameInp) resNameInp.value = server.resource;
+    }
+
+    // --- FORM 1: VM Dynamic Rows & Risk Evaluation ---
+    function initFormNewServer() {
+      document.getElementById("vmTableBody").innerHTML = "";
+      document.getElementById("assessmentTableBody").innerHTML = "";
       addVmRow();
+      document.getElementById("riskLikelihood")?.addEventListener("change", updateRiskMatrix);
+      document.getElementById("riskImpact")?.addEventListener("change", updateRiskMatrix);
+      calculateTotals();
+      updateRiskMatrix();
     }
-
-    function resetNewServerForm() {
-      document.getElementById('serverRequestForm').reset();
-      initNewServerForm();
-    }
-
-    const OS_OPTIONS = [
-      "Ubuntu 22.04 LTS", "Ubuntu 20.04 LTS", "Ubuntu 24.04 LTS",
-      "Debian 12", "CentOS 7", "Rocky Linux 9", "AlmaLinux 9",
-      "Windows Server 2022", "Windows Server 2019", "Other"
-    ];
-    const SYS_TYPES = ["ระบบบริการ (Web Services)", "ระบบฐานข้อมูล (Database)", "ระบบแฟ้มข้อมูล (File Server)", "อื่นๆ"];
 
     function addVmRow() {
-      if (vmRowCount >= MAX_VM_ROWS) { showToast("ครบ 5 รายการแล้ว", "warning"); return; }
-      vmRowCount++;
-      const tbody = document.getElementById('vmTableBody');
-      const idx = vmRowCount;
-      const row = document.createElement('tr');
-      row.id = 'vmRow_' + idx;
-      row.className = 'hover:bg-slate-50';
+      const tbody = document.getElementById("vmTableBody");
+      const assessTbody = document.getElementById("assessmentTableBody");
+      const currentCount = tbody.querySelectorAll("tr.vm-data-row").length;
+
+      if (currentCount >= MAX_VM_ROWS) {
+        showToast(`จำกัดสูงสุด ${MAX_VM_ROWS} เครื่องต่อคำขอ`, "warning");
+        return;
+      }
+
+      vmRowIdCounter++;
+      const rowId = `vm-row-${vmRowIdCounter}`;
+
+      const row = document.createElement("tr");
+      row.id = rowId;
+      row.className = "vm-data-row hover:bg-slate-50 transition border-b border-slate-200 text-xs";
+
+      const osOptionsHtml = OS_OPTIONS.map(os => `<option value="${os.value}">${os.label}</option>`).join("");
+      const sysTypeHtml = SYSTEM_TYPE_OPTIONS.map(st => `<option value="${st.value}">${st.label}</option>`).join("");
+      const networkHtml = NETWORK_OPTIONS.map(net => `<option value="${net.value}">${net.label}</option>`).join("");
+
       row.innerHTML = `
-        <td class="py-2 px-3 text-center text-slate-400 font-bold text-xs">${idx}</td>
-        <td class="py-2 px-2"><input type="text" placeholder="ชื่อ/หน้าที่" data-vm="${idx}" data-col="name"
-          class="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs outline-none focus:ring-1 focus:ring-[#0f1d36]"></td>
+        <td class="py-2.5 px-3 text-center font-bold text-slate-500 row-number">${currentCount + 1}</td>
         <td class="py-2 px-2">
-          <select data-vm="${idx}" data-col="sysType" class="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs outline-none">
-            ${SYS_TYPES.map(s => `<option>${s}</option>`).join('')}
-          </select>
+          <input type="text" name="vmName[]" placeholder="เช่น Web Server" oninput="syncVmName('${rowId}', this.value)" required class="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs">
         </td>
-        <td class="py-2 px-2">
-          <select data-vm="${idx}" data-col="os" class="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs outline-none">
-            ${OS_OPTIONS.map(o => `<option>${o}</option>`).join('')}
-          </select>
-        </td>
-        <td class="py-2 px-1"><input type="number" min="1" max="128" value="4" data-vm="${idx}" data-col="vcpu"
-          onchange="recalcTotals()" class="w-full px-1 py-1 bg-white border border-slate-300 rounded text-xs text-center outline-none"></td>
-        <td class="py-2 px-1"><input type="number" min="1" max="512" value="8" data-vm="${idx}" data-col="ram"
-          onchange="recalcTotals()" class="w-full px-1 py-1 bg-white border border-slate-300 rounded text-xs text-center outline-none"></td>
-        <td class="py-2 px-1"><input type="number" min="10" max="10000" step="10" value="100" data-vm="${idx}" data-col="storage"
-          onchange="recalcTotals()" class="w-full px-1 py-1 bg-white border border-slate-300 rounded text-xs text-center outline-none"></td>
-        <td class="py-2 px-2">
-          <select data-vm="${idx}" data-col="network" class="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs outline-none">
-            <option>Private</option><option>Public</option><option>Hybrid</option>
-          </select>
-        </td>
+        <td class="py-2 px-2"><select name="vmSysType[]" class="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs">${sysTypeHtml}</select></td>
+        <td class="py-2 px-2"><select name="vmOs[]" class="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs">${osOptionsHtml}</select></td>
+        <td class="py-2 px-1 text-center"><input type="number" name="vmVcpu[]" min="1" max="128" value="4" oninput="calculateTotals()" class="w-14 px-1 py-1 text-center bg-white border rounded text-xs font-bold"></td>
+        <td class="py-2 px-1 text-center"><input type="number" name="vmRam[]" min="1" max="512" value="8" oninput="calculateTotals()" class="w-14 px-1 py-1 text-center bg-white border rounded text-xs font-bold"></td>
+        <td class="py-2 px-1 text-center"><input type="number" name="vmStorage[]" min="10" max="10000" step="10" value="100" oninput="calculateTotals()" class="w-16 px-1 py-1 text-center bg-white border rounded text-xs font-bold"></td>
+        <td class="py-2 px-2"><select name="vmNetwork[]" class="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs">${networkHtml}</select></td>
         <td class="py-2 px-2 text-center">
-          <button type="button" onclick="removeVmRow(${idx})" class="text-rose-400 hover:text-rose-600 transition text-xs"><i class="fa-solid fa-xmark"></i></button>
-        </td>`;
+          <button type="button" onclick="removeVmRow('${rowId}')" class="text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash-can"></i></button>
+        </td>
+      `;
       tbody.appendChild(row);
-      addCiaRow(idx);
-      recalcTotals();
-      updateRowCount();
-    }
 
-    function removeVmRow(idx) {
-      if (vmRowCount <= 1) { showToast("ต้องมีอย่างน้อย 1 แถว", "warning"); return; }
-      document.getElementById('vmRow_' + idx)?.remove();
-      document.getElementById('ciaRow_' + idx)?.remove();
-      vmRowCount--;
-      recalcTotals();
-      updateRowCount();
-    }
-
-    function addCiaRow(idx) {
-      const tbody = document.getElementById('ciaTableBody');
-      const row = document.createElement('tr');
-      row.id = 'ciaRow_' + idx;
-      row.className = 'hover:bg-slate-50';
-      const opts = (selected) => ['1 (ต่ำ)','2 (ปานกลาง)','3 (สูง)'].map(o =>
-        `<option value="${o[0]}" ${o[0]==selected?'selected':''}>${o}</option>`).join('');
-      row.innerHTML = `
-        <td class="py-2 px-3 text-center text-xs font-bold text-slate-500">VM-${String(idx).padStart(2,'0')}</td>
+      const assessRow = document.createElement("tr");
+      assessRow.id = `assess-${rowId}`;
+      assessRow.className = "assess-data-row hover:bg-slate-50 transition border-b border-slate-200 text-xs";
+      assessRow.innerHTML = `
+        <td class="py-2 px-2.5 text-slate-700 font-medium">
+          <span class="assess-vm-name truncate text-[11px] text-slate-600">VM #${currentCount + 1}</span>
+        </td>
         <td class="py-2 px-3 text-center">
-          <select data-cia="${idx}" data-col="pdpa" class="px-2 py-1 bg-white border border-slate-300 rounded text-xs outline-none">
-            <option value="FALSE">ไม่มี</option><option value="TRUE">มี PDPA</option>
+          <input type="checkbox" name="ciaPdpa[]" class="w-4 h-4 rounded text-blue-600">
+        </td>
+        <td class="py-2 px-2">
+          <select name="ciaC[]" onchange="updateRowImpact('${rowId}')" class="w-full p-1 bg-white border rounded text-xs">
+            <option value="1">LOW: ข้อมูลสาธารณะ</option>
+            <option value="2">MEDIUM: ข้อมูลใช้งานภายใน</option>
+            <option value="3">HIGH: ข้อมูลส่วนบุคคล</option>
           </select>
         </td>
-        <td class="py-2 px-2 text-center"><select data-cia="${idx}" data-col="c" class="px-2 py-1 bg-white border border-slate-300 rounded text-xs outline-none w-full">${opts('1')}</select></td>
-        <td class="py-2 px-2 text-center"><select data-cia="${idx}" data-col="i" class="px-2 py-1 bg-white border border-slate-300 rounded text-xs outline-none w-full">${opts('1')}</select></td>
-        <td class="py-2 px-2 text-center"><select data-cia="${idx}" data-col="a" class="px-2 py-1 bg-white border border-slate-300 rounded text-xs outline-none w-full">${opts('1')}</select></td>
-        <td class="py-2 px-3 text-center text-[10px] font-bold text-slate-400" id="ciaImpact_${idx}">ต่ำ</td>`;
-      // auto update impact when C/I/A change
-      row.querySelectorAll('[data-col="c"],[data-col="i"],[data-col="a"]').forEach(sel =>
-        sel.addEventListener('change', () => updateCiaImpact(idx)));
-      tbody.appendChild(row);
+        <td class="py-2 px-2">
+          <select name="ciaI[]" onchange="updateRowImpact('${rowId}')" class="w-full p-1 bg-white border rounded text-xs">
+            <option value="1">LOW: คลาดเคลื่อนเล็กน้อย</option>
+            <option value="2">MEDIUM: กระทบงาน</option>
+            <option value="3">HIGH: ร้ายแรง</option>
+          </select>
+        </td>
+        <td class="py-2 px-2">
+          <select name="ciaA[]" onchange="updateRowImpact('${rowId}')" class="w-full p-1 bg-white border rounded text-xs">
+            <option value="1">LOW: หยุดชั่วคราว</option>
+            <option value="2">MEDIUM: หยุดหลายชั่วโมง</option>
+            <option value="3">HIGH: หยุดไม่ได้</option>
+          </select>
+        </td>
+        <td class="py-2 px-3 text-center">
+          <span class="impact-badge w-6 h-6 rounded-full font-bold inline-flex items-center justify-center text-xs text-white bg-emerald-500">1</span>
+        </td>
+      `;
+      assessTbody.appendChild(assessRow);
+
+      updateRowNumbers();
+      calculateTotals();
     }
 
-    function updateCiaImpact(idx) {
-      const vals = ['c','i','a'].map(col => {
-        const el = document.querySelector(`[data-cia="${idx}"][data-col="${col}"]`);
-        return el ? parseInt(el.value) : 1;
-      });
-      const max = Math.max(...vals);
-      const el = document.getElementById('ciaImpact_' + idx);
-      if (!el) return;
-      const levels = {1:['ต่ำ','text-emerald-600'], 2:['ปานกลาง','text-amber-600'], 3:['สูง','text-rose-600']};
-      el.textContent = levels[max]?.[0] || '-';
-      el.className = `py-2 px-3 text-center text-[10px] font-bold ${levels[max]?.[1] || 'text-slate-400'}`;
+    function removeVmRow(rowId) {
+      const tbody = document.getElementById("vmTableBody");
+      if (tbody.querySelectorAll("tr.vm-data-row").length <= 1) {
+        showToast("ต้องมีรายการ VM อย่างน้อย 1 เครื่อง", "warning");
+        return;
+      }
+      document.getElementById(rowId)?.remove();
+      document.getElementById(`assess-${rowId}`)?.remove();
+      updateRowNumbers();
+      calculateTotals();
     }
 
-    function recalcTotals() {
-      let cpu=0, ram=0, sto=0, cnt=0;
-      document.querySelectorAll('[data-col="vcpu"]').forEach(el => { cpu += parseInt(el.value)||0; cnt++; });
-      document.querySelectorAll('[data-col="ram"]').forEach(el => { ram += parseInt(el.value)||0; });
-      document.querySelectorAll('[data-col="storage"]').forEach(el => { sto += parseInt(el.value)||0; });
-      document.getElementById('totalVcpu').textContent = cpu;
-      document.getElementById('totalRam').textContent = ram;
-      document.getElementById('totalStorage').textContent = sto;
-      document.getElementById('totalVmCount').textContent = cnt;
+    function syncVmName(rowId, val) {
+      const assessName = document.querySelector(`#assess-${rowId} .assess-vm-name`);
+      if (assessName) assessName.textContent = val.trim() || `VM #${document.querySelector(`#${rowId} .row-number`)?.textContent.trim() || ''}`;
     }
 
-    function updateRowCount() {
-      document.getElementById('rowCountDisplay').textContent = vmRowCount + ' / ' + MAX_VM_ROWS;
-      document.getElementById('btnAddRow').disabled = vmRowCount >= MAX_VM_ROWS;
-    }
+    function updateRowImpact(rowId) {
+      const assessRow = document.getElementById(`assess-${rowId}`);
+      if (!assessRow) return;
+      const c = parseInt(assessRow.querySelector('select[name="ciaC[]"]')?.value, 10) || 1;
+      const i = parseInt(assessRow.querySelector('select[name="ciaI[]"]')?.value, 10) || 1;
+      const a = parseInt(assessRow.querySelector('select[name="ciaA[]"]')?.value, 10) || 1;
+      const maxVal = Math.max(c, i, a);
 
-    function updateRiskBadge() {
-      const L = parseInt(document.getElementById('srv_riskLikelihood')?.value || '1');
-      const I = parseInt(document.getElementById('srv_riskImpact')?.value || '1');
-      const score = L * I;
-      const badge = document.getElementById('riskResultBadge');
-      const desc = document.getElementById('riskResultDesc');
-      if (!badge || !desc) return;
-      if (score <= 2) {
-        badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200';
-        badge.textContent = 'ความเสี่ยงต่ำ';
-        desc.textContent = 'ผลกระทบอยู่ในวงจำกัด ทรัพยากรและระบบมีความเสี่ยงต่ำ';
-      } else if (score <= 4) {
-        badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200';
-        badge.textContent = 'ความเสี่ยงปานกลาง';
-        desc.textContent = 'อาจเกิดผลกระทบที่มีนัยสำคัญ ควรวางแผนรับมือล่วงหน้า';
-      } else {
-        badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200';
-        badge.textContent = 'ความเสี่ยงสูง';
-        desc.textContent = 'ความเสี่ยงสูง ต้องการการดูแลและมาตรการป้องกันอย่างเร่งด่วน';
+      const badge = assessRow.querySelector(".impact-badge");
+      if (badge) {
+        badge.textContent = maxVal;
+        badge.className = `impact-badge w-6 h-6 rounded-full font-bold inline-flex items-center justify-center text-xs text-white ${
+          maxVal === 1 ? 'bg-emerald-500' : maxVal === 2 ? 'bg-amber-500' : 'bg-rose-500'
+        }`;
       }
     }
 
-    function collectVmRows() {
-      const rows = [];
-      document.querySelectorAll('#vmTableBody tr').forEach(tr => {
-        const idx = tr.id?.replace('vmRow_','');
-        if (!idx) return;
-        const get = (col) => {
-          const el = tr.querySelector(`[data-col="${col}"]`);
-          return el ? el.value.trim() : '';
-        };
-        // cia
-        const getC = (col) => {
-          const el = document.querySelector(`[data-cia="${idx}"][data-col="${col}"]`);
-          return el ? el.value : '1';
-        };
-        rows.push({
-          name: get('name'), sysType: get('sysType'), os: get('os'),
-          vcpu: get('vcpu'), ram: get('ram'), storage: get('storage'), network: get('network'),
-          pdpa: getC('pdpa'), c: getC('c'), i: getC('i'), a: getC('a')
-        });
+    function updateRowNumbers() {
+      document.querySelectorAll("#vmTableBody tr.vm-data-row").forEach((r, idx) => {
+        r.querySelector(".row-number").textContent = idx + 1;
       });
-      return rows;
+      const count = document.querySelectorAll("#vmTableBody tr.vm-data-row").length;
+      document.getElementById("rowCountDisplay").textContent = `${count} / ${MAX_VM_ROWS}`;
     }
 
-    async function submitNewServerForm(e) {
+    function calculateTotals() {
+      let vcpu = 0, ram = 0, storage = 0;
+      document.querySelectorAll('input[name="vmVcpu[]"]').forEach(i => vcpu += parseInt(i.value, 10) || 0);
+      document.querySelectorAll('input[name="vmRam[]"]').forEach(i => ram += parseInt(i.value, 10) || 0);
+      document.querySelectorAll('input[name="vmStorage[]"]').forEach(i => storage += parseInt(i.value, 10) || 0);
+
+      document.getElementById("totalVmCount").textContent = document.querySelectorAll('input[name="vmVcpu[]"]').length;
+      document.getElementById("totalVcpu").textContent = vcpu;
+      document.getElementById("totalRam").textContent = ram;
+      document.getElementById("totalStorage").textContent = storage.toLocaleString();
+    }
+
+    function updateRiskMatrix() {
+      const l = parseInt(document.getElementById("riskLikelihood")?.value, 10) || 1;
+      const i = parseInt(document.getElementById("riskImpact")?.value, 10) || 1;
+      const score = l * i;
+      const badge = document.getElementById("riskResultBadge");
+      const desc = document.getElementById("riskResultDesc");
+
+      if (badge) {
+        if (score <= 2) {
+          badge.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200";
+          badge.textContent = `ความเสี่ยงต่ำ (${score}/9)`;
+          if (desc) desc.textContent = "ผลกระทบอยู่ในวงจำกัด ทรัพยากรและระบบมีความเสี่ยงต่ำ";
+        } else if (score <= 4) {
+          badge.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200";
+          badge.textContent = `ความเสี่ยงปานกลาง (${score}/9)`;
+          if (desc) desc.textContent = "เกิดผลกระทบอย่างเห็นได้ชัดต่อระบบ การดำเนินงาน หรือบริการสำคัญ";
+        } else {
+          badge.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200";
+          badge.textContent = `ความเสี่ยงสูง (${score}/9)`;
+          if (desc) desc.textContent = "เกิดผลกระทบอย่างมีนัยสำคัญ ข้อมูลเสียหายเป็นวงกว้าง";
+        }
+      }
+    }
+
+    // --- Submit Ticket to Backend ---
+    async function submitActiveTicket(e) {
       e.preventDefault();
-      const errEl = document.getElementById('newServerError');
-      errEl.classList.add('hidden');
+      
+      const btn = document.getElementById("btnSubmitForm");
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังส่งคำขอ...'; }
 
-      const vmRows = collectVmRows();
-      const emptyNames = vmRows.filter(r => !r.name);
-      if (emptyNames.length > 0) {
-        errEl.textContent = 'กรุณากรอก "ชื่อ/หน้าที่" ของ VM ทุกแถว';
-        errEl.classList.remove('hidden'); return;
+      let details = {};
+      let note = "";
+
+      if (activeTicketType === "NEW_SERVER") {
+        const vmRows = [];
+        document.querySelectorAll("#vmTableBody tr.vm-data-row").forEach((tr) => {
+          const rowId = tr.id;
+          const assessRow = document.getElementById(`assess-${rowId}`);
+          vmRows.push({
+            name: tr.querySelector('input[name="vmName[]"]').value,
+            sysType: tr.querySelector('select[name="vmSysType[]"]').value,
+            os: tr.querySelector('select[name="vmOs[]"]').value,
+            vcpu: tr.querySelector('input[name="vmVcpu[]"]').value,
+            ram: tr.querySelector('input[name="vmRam[]"]').value,
+            storage: tr.querySelector('input[name="vmStorage[]"]').value,
+            network: tr.querySelector('select[name="vmNetwork[]"]').value,
+            pdpa: assessRow?.querySelector('input[name="ciaPdpa[]"]')?.checked ? "TRUE" : "FALSE",
+            c: assessRow?.querySelector('select[name="ciaC[]"]')?.value || "1",
+            i: assessRow?.querySelector('select[name="ciaI[]"]')?.value || "1",
+            a: assessRow?.querySelector('select[name="ciaA[]"]')?.value || "1"
+          });
+        });
+
+        details = {
+          requestTimeline: document.getElementById("requestTimeline").value,
+          projectName: document.getElementById("projectName").value,
+          riskLikelihood: document.getElementById("riskLikelihood").value,
+          riskImpact: document.getElementById("riskImpact").value,
+          vmRows: vmRows
+        };
+        note = document.getElementById("requestRemarks")?.value || "";
+      } 
+      else if (activeTicketType === "RESIZE_SERVER") {
+        details = {
+          ipPublic: document.getElementById("resizeServerIp").value,
+          newOs: document.getElementById("newOs").value,
+          newVcpu: document.getElementById("newVcpu").value,
+          newRam: document.getElementById("newRam").value,
+          newStorage: document.getElementById("newStorage").value
+        };
+        note = document.getElementById("resizeNote")?.value || "";
+      }
+      else if (activeTicketType === "FIREWALL") {
+        details = {
+          ipPublic: document.getElementById("fwServerIp").value,
+          sourceIp: document.getElementById("fwSourceIp").value,
+          port: document.getElementById("fwPort").value,
+          fwAction: document.getElementById("fwAction").value
+        };
+        note = document.getElementById("fwNote")?.value || "";
+      }
+      else if (activeTicketType === "DOMAIN") {
+        details = {
+          ipPublic: document.getElementById("domainServerIp").value,
+          resourceName: document.getElementById("domainResourceName").value,
+          domainName: document.getElementById("domainName").value
+        };
+        note = document.getElementById("domainNote")?.value || "";
+      }
+      else if (activeTicketType === "VPN") {
+        details = {
+          ipPublicAccess: document.getElementById("vpnServerIp").value,
+          reason: document.getElementById("vpnReason").value
+        };
+        note = document.getElementById("vpnNote")?.value || "";
       }
 
-      const details = {
-        requestTimeline: document.getElementById('srv_requestTimeline').value,
-        projectName: document.getElementById('srv_projectName').value.trim(),
-        riskLikelihood: document.getElementById('srv_riskLikelihood').value,
-        riskImpact: document.getElementById('srv_riskImpact').value,
-        vmRows: JSON.stringify(vmRows)
-      };
-      const note = document.getElementById('srv_note').value.trim();
+      const res = await callBackend("createTicket", { type: activeTicketType, details, note });
 
-      const btn = document.getElementById('btnSubmitNewServer');
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> กำลังส่ง...';
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> <span>ส่งคำขอใช้บริการ</span>'; }
 
-      const res = await callBackend("createTicket", { type: 'NEW_SERVER', details, note });
-
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-paper-plane text-sm"></i><span>ส่งคำขอ</span>';
-
-      if (res.success) {
-        document.getElementById('modalSuccessTicketId').textContent = res.ticketId;
-        document.getElementById('successModal').classList.remove('hidden');
-        resetNewServerForm();
-        resetTicketForm();
-        await loadMyTickets();
+      if (res && res.success && res.data) {
+        document.getElementById("modalSuccessTicketId").textContent = res.data.ticketId;
+        document.getElementById("downloadSuccessModal").classList.remove("hidden");
+        await loadTicketsFromBackend();
       } else {
-        errEl.textContent = res.message || "เกิดข้อผิดพลาด";
-        errEl.classList.remove('hidden');
+        showToast("เกิดข้อผิดพลาด: " + (res.message || "ไม่สามารถส่งคำขอได้"), "error");
       }
     }
 
-    // ──────────────────────────────────────────────────────────────
-    // MY TICKETS
-    // ──────────────────────────────────────────────────────────────
-    async function loadMyTickets() {
-      const res = await callWithRetry("listTickets");
-      if (res.success) myTickets = res.tickets || [];
-      renderMyTicketsTable();
+    // ดึงตาราง Ticket ของผู้ใช้
+    async function loadTicketsFromBackend() {
+      const tbody = document.getElementById("myTicketsBody");
+      if (!tbody) return;
+
+      const res = await callBackend("listTickets");
+      if (res && res.success && Array.isArray(res.data.tickets)) {
+        myTickets = res.data.tickets;
+        renderMyTicketsTable();
+      } else {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">ไม่สามารถดึงข้อมูลคำขอได้</td></tr>`;
+      }
     }
 
     function renderMyTicketsTable() {
-      const tbody = document.getElementById('myTicketsBody');
-      tbody.innerHTML = '';
-      if (!myTickets || myTickets.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-400">ยังไม่มีคำขอ</td></tr>';
+      const tbody = document.getElementById("myTicketsBody");
+      if (!tbody) return;
+
+      if (myTickets.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">ยังไม่มีประวัติคำขอ</td></tr>`;
         return;
       }
-      myTickets.forEach(t => {
+
+      const STATUS_CLASSES = {
+        "รอดำเนินการ": "bg-amber-50 text-amber-700 border-amber-200",
+        "กำลังดำเนินการ": "bg-sky-50 text-sky-700 border-sky-200",
+        "อนุมัติ": "bg-emerald-50 text-emerald-700 border-emerald-200",
+        "ปฏิเสธ": "bg-rose-50 text-rose-700 border-rose-200",
+        "เสร็จสิ้น": "bg-slate-100 text-slate-700 border-slate-300"
+      };
+
+      tbody.innerHTML = myTickets.map(t => {
         const attachCount = (t.attachments || []).length;
-        const attachBadge = attachCount > 0
-          ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded"><i class="fa-solid fa-paperclip text-[9px]"></i>${attachCount} ไฟล์</span>`
-          : '<span class="text-slate-300 text-[10px]">ไม่มี</span>';
-        tbody.insertAdjacentHTML('beforeend', `
-          <tr class="hover:bg-slate-50">
-            <td class="py-2.5 px-3 font-mono font-bold text-slate-800 text-[11px]">${escapeHtml(t.id)}</td>
-            <td class="py-2.5 px-3 text-slate-700">${escapeHtml(t.typeLabel)}</td>
-            <td class="py-2.5 px-3">${statusBadge(t.status)}</td>
-            <td class="py-2.5 px-3 text-slate-500 text-[11px]">${fmtDate(t.createdAt)}</td>
-            <td class="py-2.5 px-3">
+        const attachBadge = attachCount > 0 
+          ? `<span class="text-blue-700 font-bold bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-paperclip"></i> ${attachCount} ไฟล์</span>`
+          : `<span class="text-slate-400 text-[10px]">ไม่มี</span>`;
+
+        return `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-xs">
+            <td class="py-3 px-3 font-mono font-bold text-slate-800">${escapeHtml(t.id)}</td>
+            <td class="py-3 px-3 font-medium text-slate-800">
+              ${escapeHtml(t.typeLabel)}
+            </td>
+            <td class="py-3 px-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${STATUS_CLASSES[t.status] || 'bg-slate-100 text-slate-700'}">
+                ${escapeHtml(t.status)}
+              </span>
+            </td>
+            <td class="py-3 px-3 text-slate-500">${new Date(t.createdAt).toLocaleDateString("th-TH")}</td>
+            <td class="py-3 px-3">
               <div class="flex items-center gap-1.5">
                 ${attachBadge}
-                <button onclick="openAttachModal('${escapeHtml(t.id)}')"
-                        class="text-[10px] font-bold text-slate-500 hover:text-[#0f1d36] border border-slate-200 px-1.5 py-0.5 rounded hover:border-slate-400 transition">
-                  <i class="fa-solid fa-plus text-[9px]"></i> แนบ
+                <button type="button" onclick="openAttachModal('${t.id}')" class="text-[10px] font-bold text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded hover:border-slate-400">
+                  + แนบ
                 </button>
               </div>
             </td>
+            <td class="py-3 px-3 text-center">
+              <button type="button" onclick="window.print()" class="text-blue-700 hover:underline font-bold text-xs">
+                พิมพ์คำขอ
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    // ดึงตาราง Admin
+    async function loadAdminTicketsFromBackend() {
+      const tbody = document.getElementById("adminTicketsBody");
+      if (!tbody) return;
+
+      const res = await callBackend("listTickets");
+      if (res && res.success && Array.isArray(res.data.tickets)) {
+        tbody.innerHTML = res.data.tickets.map(t => `
+          <tr class="hover:bg-slate-50 border-b text-xs">
+            <td class="py-2.5 px-3 font-mono font-bold">${t.id}</td>
+            <td class="py-2.5 px-3"><strong>${escapeHtml(t.agency)}</strong><br><span class="text-[10px] text-slate-400">${escapeHtml(t.requesterName)}</span></td>
+            <td class="py-2.5 px-3">${escapeHtml(t.typeLabel)}</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 border">${t.status}</span></td>
             <td class="py-2.5 px-3 text-center">
-              <button onclick="openTicketDetail('${escapeHtml(t.id)}', false)"
-                      class="text-[10px] font-bold text-[#0f1d36] hover:underline">ดูรายละเอียด</button>
+              <button onclick="approveTicketAdmin('${t.id}', '${t.status}')" class="px-2 py-1 bg-emerald-100 text-emerald-800 font-bold rounded hover:bg-emerald-200">อนุมัติ</button>
             </td>
-          </tr>`);
-      });
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    // ADMIN
-    // ──────────────────────────────────────────────────────────────
-    async function loadAllTicketsForAdmin() {
-      const res = await callWithRetry("listTickets");
-      if (res.success) {
-        allTickets = res.tickets || [];
-        renderAdminSummary();
-        // populate filters
-        const statuses = [...new Set(allTickets.map(t => t.status))];
-        const types = [...new Map(allTickets.map(t => [t.type, t.typeLabel])).entries()];
-        document.getElementById('filterStatus').innerHTML =
-          '<option value="">ทุกสถานะ</option>' + statuses.map(s => `<option>${escapeHtml(s)}</option>`).join('');
-        document.getElementById('filterType').innerHTML =
-          '<option value="">ทุกประเภท</option>' + types.map(([k,l]) => `<option value="${escapeHtml(k)}">${escapeHtml(l)}</option>`).join('');
-      }
-      renderAdminTable();
-    }
-
-    function renderAdminSummary() {
-      const counts = {};
-      const colors = {
-        "รอดำเนินการ": "bg-amber-50 border-amber-200 text-amber-800",
-        "กำลังดำเนินการ": "bg-sky-50 border-sky-200 text-sky-800",
-        "อนุมัติ": "bg-emerald-50 border-emerald-200 text-emerald-800",
-        "ปฏิเสธ": "bg-rose-50 border-rose-200 text-rose-800",
-        "เสร็จสิ้น": "bg-slate-100 border-slate-200 text-slate-700"
-      };
-      allTickets.forEach(t => { counts[t.status] = (counts[t.status]||0) + 1; });
-      const wrap = document.getElementById('adminSummaryCards');
-      wrap.innerHTML = Object.entries(colors).map(([k,cls]) => `
-        <div class="border rounded-xl p-3 text-center ${cls} cursor-pointer hover:opacity-80" onclick="document.getElementById('filterStatus').value='${k}';renderAdminTable()">
-          <div class="text-xl font-bold">${counts[k]||0}</div>
-          <div class="text-[11px] font-semibold mt-0.5">${escapeHtml(k)}</div>
-        </div>`).join('');
-    }
-
-    function renderAdminTable() {
-      const statusF = document.getElementById('filterStatus').value;
-      const typeF = document.getElementById('filterType').value;
-      const filtered = allTickets.filter(t => (!statusF||t.status===statusF)&&(!typeF||t.type===typeF));
-      const tbody = document.getElementById('adminTicketsBody');
-      tbody.innerHTML = '';
-      if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-slate-400">ไม่พบคำขอ</td></tr>'; return;
-      }
-      filtered.forEach(t => {
-        tbody.insertAdjacentHTML('beforeend', `
-          <tr class="hover:bg-slate-50">
-            <td class="py-2.5 px-3 font-mono font-bold text-slate-800 text-[11px]">${escapeHtml(t.id)}</td>
-            <td class="py-2.5 px-3">
-              <div class="font-semibold text-slate-800">${escapeHtml(t.agency)}</div>
-              <div class="text-slate-400 text-[10px]">${escapeHtml(t.requesterName)}</div>
-            </td>
-            <td class="py-2.5 px-3 text-slate-600">${escapeHtml(t.typeLabel)}</td>
-            <td class="py-2.5 px-3">${statusBadge(t.status)}</td>
-            <td class="py-2.5 px-3 text-slate-500 text-[11px]">${fmtDate(t.createdAt)}</td>
-            <td class="py-2.5 px-3 text-center">
-              <button onclick="openTicketDetail('${escapeHtml(t.id)}', true)"
-                      class="text-[10px] font-bold text-rose-600 hover:underline">จัดการ</button>
-            </td>
-          </tr>`);
-      });
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    // TICKET DETAIL MODAL
-    // ──────────────────────────────────────────────────────────────
-    function findTicket(id) {
-      return allTickets.find(t=>t.id===id) || myTickets.find(t=>t.id===id);
-    }
-
-    function openTicketDetail(id, adminMode) {
-      const t = findTicket(id);
-      if (!t) return;
-      document.getElementById('modalTicketTitle').textContent = t.id + ' — ' + t.typeLabel;
-
-      // parse vmRows for display
-      let detailsDisplay = '';
-      const d = t.details || {};
-
-      if (t.type === 'NEW_SERVER') {
-        let vmRows = [];
-        try { vmRows = JSON.parse(d.vmRows||'[]'); } catch(e) {}
-        detailsDisplay = `
-          <div class="text-[11px] space-y-1">
-            <div><strong>โครงการ:</strong> ${escapeHtml(d.projectName||'-')}</div>
-            <div><strong>กำหนดใช้งาน:</strong> ${escapeHtml(d.requestTimeline||'-')}</div>
-            <div><strong>ความเสี่ยง:</strong> L${escapeHtml(d.riskLikelihood||'-')} × I${escapeHtml(d.riskImpact||'-')}</div>
-          </div>
-          <div class="overflow-x-auto mt-2 rounded-lg border border-slate-200">
-            <table class="w-full text-[11px] min-w-[400px]">
-              <thead><tr class="bg-slate-100 text-slate-600 font-bold">
-                <th class="py-1.5 px-2">ชื่อ VM</th><th class="py-1.5 px-2">OS</th>
-                <th class="py-1.5 px-1 text-center">vCPU</th><th class="py-1.5 px-1 text-center">RAM</th><th class="py-1.5 px-1 text-center">Storage</th>
-              </tr></thead>
-              <tbody class="divide-y divide-slate-100">${vmRows.map(r=>
-                `<tr><td class="py-1 px-2">${escapeHtml(r.name||'-')}</td><td class="py-1 px-2">${escapeHtml(r.os||'-')}</td>
-                 <td class="py-1 px-1 text-center">${escapeHtml(r.vcpu||'-')}</td>
-                 <td class="py-1 px-1 text-center">${escapeHtml(r.ram||'-')}</td>
-                 <td class="py-1 px-1 text-center">${escapeHtml(r.storage||'-')}</td></tr>`).join('')}
-              </tbody>
-            </table>
-          </div>`;
-      } else {
-        detailsDisplay = Object.entries(d).map(([k,v]) =>
-          `<div class="flex justify-between border-b border-slate-100 py-1.5 text-xs">
-            <span class="text-slate-500">${escapeHtml(k)}</span>
-            <span class="font-semibold text-slate-800 text-right ml-4">${escapeHtml(String(v))||'-'}</span>
-          </div>`).join('');
-      }
-
-      const attachHtml = (t.attachments||[]).length > 0
-        ? '<div class="mt-3"><strong class="text-xs text-slate-600">ไฟล์แนบ:</strong><ul class="mt-1 space-y-1">' +
-          t.attachments.map(f => `<li class="text-xs"><a href="${escapeHtml(f.url)}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1"><i class="fa-solid fa-paperclip text-[10px]"></i>${escapeHtml(f.name)}</a></li>`).join('')
-          + '</ul></div>'
-        : '';
-
-      let html = `
-        <div class="flex justify-between items-center mb-2">
-          <span class="text-xs text-slate-500">สถานะ</span>${statusBadge(t.status)}
-        </div>
-        <div class="text-xs text-slate-500 mb-3">
-          ผู้ยื่น: <strong class="text-slate-700">${escapeHtml(t.requesterName)}</strong> (${escapeHtml(t.requesterEmail)})<br>
-          หน่วยงาน: ${escapeHtml(t.agency)} • ยื่นเมื่อ ${fmtDate(t.createdAt)}
-        </div>
-        <div class="bg-slate-50 rounded-lg p-3 border border-slate-100 mb-3">${detailsDisplay || '-'}</div>
-        ${attachHtml}
-        ${t.note ? `<div class="mb-3"><p class="text-xs font-bold text-slate-500 mb-1">หมายเหตุ</p><p class="text-xs bg-slate-50 rounded p-2 border border-slate-100">${escapeHtml(t.note)}</p></div>` : ''}
-        ${t.adminComment ? `<div class="mb-3"><p class="text-xs font-bold text-slate-500 mb-1">ความเห็นจากผู้ดูแล</p><p class="text-xs bg-sky-50 rounded p-2 border border-sky-100">${escapeHtml(t.adminComment)}</p></div>` : ''}
-        ${t.provisionedAssetId ? `<div class="text-xs bg-emerald-50 border border-emerald-200 rounded p-2"><i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i>Provisioned Asset ID: <strong class="font-mono">${escapeHtml(t.provisionedAssetId)}</strong></div>` : ''}
-      `;
-
-      if (adminMode && isAdmin) {
-        html += `
-          <div class="border-t border-slate-100 pt-4 mt-2 space-y-3">
-            <div>
-              <label class="block text-xs font-bold text-gray-700 mb-1">เปลี่ยนสถานะ</label>
-              <select id="modalStatusSelect" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs outline-none">
-                ${Object.keys(STATUS_COLOR).map(s => `<option value="${escapeHtml(s)}" ${s===t.status?'selected':''}>${escapeHtml(s)}</option>`).join('')}
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-gray-700 mb-1">ความเห็น/เหตุผล</label>
-              <textarea id="modalCommentInput" rows="2" maxlength="500"
-                class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs outline-none">${escapeHtml(t.adminComment)}</textarea>
-            </div>
-            <div id="modalAdminError" class="hidden p-2 bg-red-100 text-red-600 text-xs rounded-lg border border-red-300"></div>
-            <button onclick="saveTicketStatus('${escapeHtml(t.id)}')"
-                    class="w-full px-4 py-2.5 bg-[#0f1d36] text-white text-xs font-bold rounded-lg hover:opacity-90 transition">
-              <i class="fa-solid fa-check mr-1.5"></i> บันทึกการเปลี่ยนแปลง
-            </button>
-          </div>`;
-      }
-
-      document.getElementById('modalTicketBody').innerHTML = html;
-      document.getElementById('ticketModal').classList.remove('hidden');
-    }
-
-    function closeTicketModal() { document.getElementById('ticketModal').classList.add('hidden'); }
-
-    async function saveTicketStatus(ticketId) {
-      const status = document.getElementById('modalStatusSelect').value;
-      const adminComment = document.getElementById('modalCommentInput').value.trim();
-      const err = document.getElementById('modalAdminError');
-      err.classList.add('hidden');
-
-      const res = await callBackend("updateTicketStatus", { ticketId, status, adminComment });
-      if (res.success) {
-        closeTicketModal();
-        showToast(res.message || "อัปเดตสถานะเรียบร้อย", "success");
-        await loadAllTicketsForAdmin();
-      } else {
-        err.textContent = res.message || "เกิดข้อผิดพลาด";
-        err.classList.remove('hidden');
+          </tr>
+        `).join("");
       }
     }
 
-    // ──────────────────────────────────────────────────────────────
-    // FILE ATTACHMENT
-    // ──────────────────────────────────────────────────────────────
+    async function approveTicketAdmin(ticketId, currentStatus) {
+      if (currentStatus === "อนุมัติ") return alert("คำขอนี้ได้รับการอนุมัติเรียบร้อยแล้ว");
+      if (confirm(`ยืนยันการอนุมัติคำขอ ${ticketId} และเพิ่มรายการลงฐานข้อมูล ?`)) {
+        const res = await callBackend("updateTicketStatus", { ticketId: ticketId, status: "อนุมัติ", adminComment: "อนุมัติการใช้งานจากระบบ" });
+        if (res && res.success) {
+          alert("อนุมัติคำขอเรียบร้อยแล้ว!");
+          loadAdminTicketsFromBackend();
+        } else {
+          alert("เกิดข้อผิดพลาด: " + (res.message || ""));
+        }
+      }
+    }
+
+    // Modal Attachments
     function openAttachModal(ticketId) {
       attachingTicketId = ticketId;
-      document.getElementById('attachModalTicketId').textContent = ticketId;
-      document.getElementById('attachFileInput').value = '';
-      document.getElementById('attachError').classList.add('hidden');
-      document.getElementById('attachProgress').classList.add('hidden');
-      document.getElementById('attachModal').classList.remove('hidden');
+      document.getElementById("attachModalTicketId").textContent = ticketId;
+      document.getElementById("attachModal").classList.remove("hidden");
     }
+
     function closeAttachModal() {
-      document.getElementById('attachModal').classList.add('hidden');
+      document.getElementById("attachModal").classList.add("hidden");
       attachingTicketId = null;
     }
 
-    async function uploadFileAttachment() {
+    async function uploadFileAttachment(e) {
+      e.preventDefault();
       if (!attachingTicketId) return;
-      const fileInput = document.getElementById('attachFileInput');
-      const errEl = document.getElementById('attachError');
-      const prog = document.getElementById('attachProgress');
-      errEl.classList.add('hidden');
 
-      if (!fileInput.files || !fileInput.files[0]) {
-        errEl.textContent = 'กรุณาเลือกไฟล์'; errEl.classList.remove('hidden'); return;
-      }
+      const fileInput = document.getElementById("attachFileInput");
+      if (!fileInput.files || !fileInput.files[0]) return alert("กรุณาเลือกไฟล์");
+
       const file = fileInput.files[0];
-      if (file.size > 32 * 1024 * 1024) {
-        errEl.textContent = 'ไฟล์ใหญ่เกิน 32 MB'; errEl.classList.remove('hidden'); return;
-      }
-
-      const btn = document.getElementById('btnSubmitAttach');
+      const btn = document.getElementById("btnSubmitAttach");
       btn.disabled = true;
-      prog.classList.remove('hidden');
-      document.getElementById('attachProgressText').textContent = 'กำลังอ่านไฟล์...';
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังอัปโหลด...';
 
-      try {
-        const base64 = await fileToBase64(file);
-        document.getElementById('attachProgressText').textContent = 'กำลังอัปโหลด...';
-
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result.split(',')[1];
         const res = await callBackend("uploadTicketFile", {
           ticketId: attachingTicketId,
           fileName: file.name,
@@ -1275,39 +1245,44 @@
           base64: base64
         });
 
-        if (res.success) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-upload"></i> ยืนยันแนบไฟล์';
+
+        if (res && res.success) {
+          showToast("แนบไฟล์เอกสารสำเร็จ", "success");
           closeAttachModal();
-          showToast("แนบไฟล์สำเร็จ: " + file.name, "success");
-          await loadMyTickets();
+          await loadTicketsFromBackend();
         } else {
-          errEl.textContent = res.message || "เกิดข้อผิดพลาด";
-          errEl.classList.remove('hidden');
+          alert("เกิดข้อผิดพลาด: " + (res.message || ""));
         }
-      } catch(e) {
-        errEl.textContent = "เกิดข้อผิดพลาดในการอ่านไฟล์";
-        errEl.classList.remove('hidden');
-      }
-
-      btn.disabled = false;
-      prog.classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
     }
 
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    // SUCCESS MODAL
-    // ──────────────────────────────────────────────────────────────
     function closeSuccessModal() {
-      document.getElementById('successModal').classList.add('hidden');
+      document.getElementById("downloadSuccessModal").classList.add("hidden");
+    }
+
+    function doLogout() {
+      sessionStorage.clear();
+      window.location.href = "auth.html";
+    }
+
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toastContainer");
+      if (!container) return;
+      const toast = document.createElement("div");
+      toast.className = `flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-semibold bg-slate-900 text-white shadow-xl`;
+      toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3500);
+    }
+
+    function escapeHtml(v) {
+      return String(v === null || v === undefined ? "" : v)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
   </script>
-
 </body>
+
 </html>
