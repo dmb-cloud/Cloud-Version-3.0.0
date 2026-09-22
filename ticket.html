@@ -245,6 +245,7 @@
           <div id="formGeneric" class="hidden space-y-4">
             <form id="genericTicketForm" onsubmit="submitActiveTicket(event)" class="space-y-4">
               <div id="dynamicFields" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+              <div id="specCard" class="hidden sm:col-span-2 bg-sky-50 border border-sky-200 rounded-lg p-3 text-xs text-slate-700"></div>
               <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">หมายเหตุเพิ่มเติม (ถ้ามี)</label>
                 <textarea id="genericNote" maxlength="500" rows="2" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none"></textarea>
@@ -665,6 +666,8 @@
       wrap.innerHTML = '';
       document.getElementById('genericNote').value = '';
       document.getElementById('genericFormError').classList.add('hidden');
+      const specCard = document.getElementById('specCard');
+      if (specCard) { specCard.classList.add('hidden'); specCard.innerHTML = ''; }
 
       typeConfig.fields.forEach(f => {
         const div = document.createElement('div');
@@ -685,6 +688,8 @@
             const o = document.createElement('option'); o.value = s.ip; o.textContent = s.ip + (s.project ? ' (' + s.project + ')' : '');
             input.appendChild(o);
           });
+          // การ์ดสเปกเดิม (RESIZE_SERVER) + auto-fill Resource Name (DOMAIN)
+          input.addEventListener('change', () => onServerFieldChange(f.key, input.value));
         } else if (f.type === 'select') {
           input = document.createElement('select');
           input.className = 'w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs outline-none focus:ring-1 focus:ring-[#0f1d36]';
@@ -709,6 +714,46 @@
         div.appendChild(input);
         wrap.appendChild(div);
       });
+    }
+
+    /** เมื่อเลือก IP_Public จาก dropdown: โชว์การ์ดสเปกเดิม (RESIZE_SERVER), pre-fill ค่าปัจจุบัน, auto-fill Resource Name (DOMAIN) */
+    function onServerFieldChange(fieldKey, ip) {
+      const match = serverList.find(s => s.ip === ip);
+      const specCard = document.getElementById('specCard');
+      if (!specCard) return;
+
+      if (selectedType === 'RESIZE_SERVER') {
+        if (match) {
+          specCard.classList.remove('hidden');
+          specCard.innerHTML = `
+            <p class="font-bold text-sky-800 mb-1"><i class="fa-solid fa-circle-info mr-1"></i> สเปกปัจจุบันของเครื่องนี้</p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-1">
+              <div>AssetID: <strong>${escapeHtml(match.id)}</strong></div>
+              <div>ระบบงาน: <strong>${escapeHtml(match.resource) || '-'}</strong></div>
+              <div>โครงการ: <strong>${escapeHtml(match.project) || '-'}</strong></div>
+              <div>OS: <strong>${escapeHtml(match.os) || '-'}</strong></div>
+              <div>vCPU: <strong>${escapeHtml(match.vcpu)}</strong></div>
+              <div>RAM: <strong>${escapeHtml(match.ram)} GB</strong></div>
+              <div>Storage: <strong>${escapeHtml(match.storage)} GB</strong></div>
+            </div>`;
+          // pre-fill ให้เริ่มจากค่าปัจจุบัน ผู้ใช้แก้เฉพาะที่ต้องการเปลี่ยน (ไม่ทับค่าที่พิมพ์ไว้แล้ว)
+          const osInp = document.querySelector('[data-field-key="newOs"]');
+          const vcpuInp = document.querySelector('[data-field-key="newVcpu"]');
+          const ramInp = document.querySelector('[data-field-key="newRam"]');
+          const storInp = document.querySelector('[data-field-key="newStorage"]');
+          if (osInp && !osInp.value) osInp.value = match.os;
+          if (vcpuInp && !vcpuInp.value) vcpuInp.value = match.vcpu || '';
+          if (ramInp && !ramInp.value) ramInp.value = match.ram || '';
+          if (storInp && !storInp.value) storInp.value = match.storage || '';
+        } else {
+          specCard.classList.add('hidden');
+        }
+      }
+
+      if (selectedType === 'DOMAIN' && match) {
+        const nameInp = document.querySelector('[data-field-key="resourceName"]');
+        if (nameInp && !nameInp.value) nameInp.value = match.resource || '';
+      }
     }
 
     async function submitActiveTicket(e) {
